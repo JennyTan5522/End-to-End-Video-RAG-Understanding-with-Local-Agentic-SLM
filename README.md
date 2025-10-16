@@ -1,4 +1,4 @@
-# 🤖 AI Chat Application
+# 🤖 Video RAG Understanding Chat Application with Local Agentic SLM
 
 A full-stack AI chat application with React frontend, FastAPI backend, PostgreSQL database, and Tauri desktop support.
 
@@ -100,55 +100,7 @@ A full-stack AI chat application with React frontend, FastAPI backend, PostgreSQ
 
 ---
 
-## 🚀 Quick Start
-
-### 🐋 **Option 1: Docker (Recommended - Fastest Setup)**
-
-**Prerequisites:** Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
-
-#### **Windows:**
-```bash
-# Clone repository
-git clone <repository-url>
-cd genai_video
-
-# Run setup script
-docker-start.bat
-```
-
-#### **Linux/macOS:**
-```bash
-# Clone repository
-git clone <repository-url>
-cd genai_video
-
-# Make script executable
-chmod +x docker-start.sh
-
-# Run setup script
-./docker-start.sh
-```
-
-#### **Or manually:**
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-**That's it!** 🎉
-- Frontend: http://localhost
-- Backend: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-
----
-
-### 💻 **Option 2: Manual Setup (Development)**
+## 🚀 Quick Start Setup for Development
 
 ### 1️⃣ Clone Repository
 
@@ -302,15 +254,6 @@ cd frontend
 
 # Development mode (with hot reload)
 npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Lint code
-npm run lint
 ```
 
 **Notes for Frontend Tasks:**
@@ -344,116 +287,7 @@ npm run tauri:build
 # frontend/src-tauri/target/release/bundle/msi/  (Windows)
 ```
 
----
-
-## 🐋 Docker Deployment
-
-### Quick Docker Commands
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# View specific service logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f postgres
-
-# Stop all services
-docker-compose stop
-
-# Restart services
-docker-compose restart
-
-# Remove all containers and volumes
-docker-compose down -v
-
-# Rebuild containers
-docker-compose build --no-cache
-
-# Check service status
-docker-compose ps
-```
-
-### Docker Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│  Docker Compose Orchestration                       │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────┐ │
-│  │  Frontend    │  │   Backend    │  │ Postgres │ │
-│  │  (Nginx)     │→ │  (FastAPI)   │→ │   DB     │ │
-│  │  Port: 80    │  │  Port: 8000  │  │Port: 5432│ │
-│  └──────────────┘  └──────────────┘  └──────────┘ │
-│                                                      │
-│  Network: ai-chat-network (bridge)                  │
-│  Volume: postgres_data (persistent)                 │
-└─────────────────────────────────────────────────────┘
-```
-
-### Environment Variables
-
-Copy `.env.example` to `.env` and customize:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
-```bash
-# Database
-POSTGRES_PASSWORD=your_secure_password
-DATABASE_URL=postgresql+asyncpg://postgres:your_secure_password@postgres:5432/chatdb
-```
-
-### Docker Production Deployment
-
-**Deploy to Cloud:**
-```bash
-# AWS ECS, Azure Container Instances, Google Cloud Run
-docker-compose up -d
-
-# Or build and push to registry
-docker build -t your-registry/ai-chat-backend:latest ./backend
-docker build -t your-registry/ai-chat-frontend:latest ./frontend
-docker push your-registry/ai-chat-backend:latest
-docker push your-registry/ai-chat-frontend:latest
-```
-
-**Docker Swarm:**
-```bash
-docker stack deploy -c docker-compose.yml ai-chat
-```
-
-**Kubernetes:**
-```bash
-# Generate k8s manifests
-kompose convert
-
-# Deploy
-kubectl apply -f .
-```
-
-### Exposed Ports
-
-| Port | Service | Protocol | Purpose |
-|------|---------|----------|---------|
-| **80** | Frontend (Nginx) | HTTP | Web interface |
-| **8000** | Backend (FastAPI) | HTTP | REST API |
-| **5432** | PostgreSQL | TCP | Database |
-
----
-
-## 🌐 Traditional Deployment
-
 ### Backend Deployment
-
-**Option 1: Traditional Server (Ubuntu/Debian)**
 ```bash
 # Install system dependencies
 sudo apt update
@@ -462,70 +296,11 @@ sudo apt install python3 python3-pip postgresql
 # Setup application
 cd backend
 pip install -r requirements.txt
-
-# Use production server
-pip install gunicorn
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker app:app --bind 0.0.0.0:8000
-```
-
-**Option 2: Docker**
-```dockerfile
-# backend/Dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### Frontend Deployment
-
-**Option 1: Static Hosting (Vercel/Netlify)**
-```bash
-cd frontend
-npm run build
-# Upload 'dist' folder to hosting service
-```
-
-**Option 2: Nginx**
-```nginx
-# /etc/nginx/sites-available/chat-app
-server {
-    listen 80;
-    server_name your-domain.com;
-    
-    location / {
-        root /var/www/chat-app/dist;
-        try_files $uri $uri/ /index.html;
-    }
-    
-    location /api {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-    }
-}
-```
-
-### Desktop App Distribution
-
-```bash
-# Build installers
-cd frontend
-npm run tauri:build
-
-# Distribute:
-# Windows: .msi installer
-# macOS: .dmg installer
-# Linux: .deb or .AppImage
 ```
 
 ---
 
 ## 📚 API Documentation
-
-### Authentication
-Currently no authentication required (add JWT for production)
 
 ### Base URL
 - **Development:** `http://localhost:8000/api`
@@ -650,16 +425,6 @@ GET /api/sessions
 
 # Verify connection details in backend/database.py
 DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/chatdb"
-```
-
-**Issue: "Module not found"**
-```bash
-# Ensure virtual environment is activated
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # macOS/Linux
-
-# Reinstall dependencies
-pip install -r requirements.txt
 ```
 
 **Issue: "Port 8000 already in use"**
