@@ -280,9 +280,9 @@ http://localhost:8000/docs       # Swagger UI
 http://localhost:8000/redoc      # ReDoc
 ```
 
-**Common Backend Tasks:**
+**Notes for Postgre Database Connection**
 ```bash
-# Test database connection
+# Test database connection:
 python -c "from database import test_connection; import asyncio; asyncio.run(test_connection())"
 
 # View logs
@@ -313,7 +313,7 @@ npm run preview
 npm run lint
 ```
 
-**Common Frontend Tasks:**
+**Notes for Frontend Tasks:**
 ```bash
 # Clear npm cache
 rm -rf node_modules package-lock.json
@@ -409,9 +409,6 @@ Edit `.env`:
 # Database
 POSTGRES_PASSWORD=your_secure_password
 DATABASE_URL=postgresql+asyncpg://postgres:your_secure_password@postgres:5432/chatdb
-
-# Optional: Add API keys
-OPENAI_API_KEY=your_key_here
 ```
 
 ### Docker Production Deployment
@@ -724,22 +721,6 @@ npm run tauri:dev
 
 ---
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
 ## 🙏 Acknowledgments
 
 - **FastAPI** - Modern Python web framework
@@ -753,10 +734,8 @@ This project is licensed under the MIT License.
 ## 📞 Support
 
 For questions or issues:
-- Create an issue in the repository
-- Check existing documentation
-- Review API docs at `http://localhost:8000/docs`
+- Create an issue in the repository 
 
 ---
 
-**Built with ❤️ for Intel Interview Project**
+**Built with ❤️ for Hands-on Learning Video RAG Project**
