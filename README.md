@@ -15,7 +15,6 @@ A full-stack AI chat application with React frontend, FastAPI backend, PostgreSQ
 - [Quick Start](#-quick-start)
 - [Project Structure](#-project-structure)
 - [Development](#-development)
-- [Deployment](#-deployment)
 - [API Documentation](#-api-documentation)
 - [Troubleshooting](#-troubleshooting)
 
@@ -100,7 +99,7 @@ A full-stack AI chat application with React frontend, FastAPI backend, PostgreSQ
 
 ---
 
-## 🚀 Quick Start Setup for Development
+## 🚀 Quick Start
 
 ### 1️⃣ Clone Repository
 
