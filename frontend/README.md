@@ -619,22 +619,4 @@ console.log('API Response:', response)
 
 ---
 
-## 📄 Environment Variables
-
-Create `.env` file for configuration:
-
-```bash
-# API Configuration
-VITE_API_BASE_URL=http://localhost:8000/api
-
-# Feature Flags
-VITE_ENABLE_TAURI=true
-VITE_ENABLE_ANALYTICS=false
-
-# Access in code:
-import.meta.env.VITE_API_BASE_URL
-```
-
----
-
 **Frontend built with ⚡ Vite + ⚛️ React**
