@@ -54,7 +54,8 @@ rustc --version   # Should show 1.70.0 or higher (for Tauri)
 # Navigate to frontend directory
 cd frontend
 
-# Install Node.js dependencies
+# Install Node.js dependencies:
+# - React, Vite, Tailwind CSS, All dependencies from package.json
 npm install
 ```
 
@@ -91,6 +92,9 @@ Expected response:
 ```bash
 # Start Vite dev server
 npm run dev
+
+# Start Vite dev server with runpod
+# npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
 ```
 
 **Output:**

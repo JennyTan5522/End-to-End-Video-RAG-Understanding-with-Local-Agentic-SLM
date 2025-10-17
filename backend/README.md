@@ -48,12 +48,12 @@ FastAPI-based REST API server featuring:
 
 ### 1. Create Virtual Environment
 
-**Option A: Using venv (Recommended)**
+**Option A: Using venv**
 ```bash
 cd backend
 
 # Create virtual environment
-python -m venv venv
+python -m venv env
 
 # Activate virtual environment
 # Windows PowerShell:
@@ -63,7 +63,7 @@ venv\Scripts\activate
 venv\Scripts\activate.bat
 
 # macOS/Linux:
-source venv/bin/activate
+source env/bin/activate
 ```
 
 **Option B: Using conda**
@@ -105,7 +105,10 @@ Download from [postgresql.org](https://www.postgresql.org/download/)
 
 ```bash
 # Connect to PostgreSQL
-psql -U postgres
+su - postgres -c "psql"
+
+# Set password (optional)
+\password postgres
 
 # In psql shell:
 CREATE DATABASE chatdb;
@@ -123,8 +126,8 @@ Edit `backend/database.py`:
 
 ```python
 DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/chatdb"
-#                                    ^^^^^^  ^^^^^^^^        ^^^^  ^^^^^^^
-#                                    user    password        host  database
+#                                    ^^^^^^   ^^^^^^^^           ^^^^  ^^^^^
+#                                     user    password           host database
 ```
 
 **Default Credentials:**
