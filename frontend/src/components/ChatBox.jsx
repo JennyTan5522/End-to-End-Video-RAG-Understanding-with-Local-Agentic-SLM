@@ -12,7 +12,15 @@ const ChatBox = () => {
   const [messages, setMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [sessionId, setSessionId] = useState('default')
+  const [sessionId, setSessionId] = useState(() => {
+    // Get session ID from localStorage or create new one
+    let storedSessionId = localStorage.getItem('sessionId')
+    if (!storedSessionId) {
+      storedSessionId = `session_${Date.now()}`
+      localStorage.setItem('sessionId', storedSessionId)
+    }
+    return storedSessionId
+  })
   const [isConnected, setIsConnected] = useState(false)
   const [isTauriMode, setIsTauriMode] = useState(false)
   const messagesEndRef = useRef(null)
@@ -100,6 +108,7 @@ const ChatBox = () => {
       // Generate new session ID for fresh start
       const newSessionId = `session_${Date.now()}`
       setSessionId(newSessionId)
+      localStorage.setItem('sessionId', newSessionId)
       
       console.log('Chat cleared successfully')
     } catch (error) {
@@ -108,6 +117,7 @@ const ChatBox = () => {
       setMessages([])
       const newSessionId = `session_${Date.now()}`
       setSessionId(newSessionId)
+      localStorage.setItem('sessionId', newSessionId)
     }
   }
 
