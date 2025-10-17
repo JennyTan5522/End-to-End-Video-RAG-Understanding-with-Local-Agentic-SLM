@@ -126,10 +126,82 @@ export async function clearChatSession(sessionId = 'default') {
   }
 }
 
+/**
+ * Upload a file to the backend
+ * @param {File} file - The file to upload
+ * @param {string} sessionId - The session identifier
+ * @returns {Promise<Object>} The upload response
+ */
+export async function uploadFile(file, sessionId = 'default') {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE_URL}/upload?session_id=${sessionId}`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to upload file:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get list of uploaded files for a session
+ * @param {string} sessionId - The session identifier
+ * @returns {Promise<Object>} The files list
+ */
+export async function getUploadedFiles(sessionId = 'default') {
+  try {
+    const response = await fetch(`${API_BASE_URL}/files/${sessionId}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to get uploaded files:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete an uploaded file
+ * @param {number} fileId - The file ID to delete
+ * @returns {Promise<Object>} The delete response
+ */
+export async function deleteFile(fileId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/files/${fileId}`, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to delete file:', error);
+    throw error;
+  }
+}
+
 export default {
   sendChatMessage,
   getChatHistory,
   checkApiHealth,
   clearChatSession,
+  uploadFile,
+  getUploadedFiles,
+  deleteFile,
   isTauri
 };
