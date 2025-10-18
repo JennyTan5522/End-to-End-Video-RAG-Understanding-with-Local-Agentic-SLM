@@ -23,8 +23,18 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4"
     OPENAI_TEMPERATURE: float = 0.0
     
+    # Audio Model Configuration
+    AUDIO_MODEL_NAME: str = "distil-whisper/distil-small.en"
+
+    # Qwen-VL Model Configuration
+    QWEN_VL_MODEL_NAME: str = "yangjie-cv/WeThink-Qwen2.5VL-7B"
+    QWEN_VL_USE_4BIT: bool = True
+
+    # bge Embedding Model Configuration
+    BGE_EMBEDDING_MODEL_NAME: str = "BAAI/bge-small-en-v1.5"
+
     # File Upload Configuration
-    DATA_FOLDER: Path = Path(__file__).parent / "data"
+    DATA_FOLDER: Path = Path(__file__).parent.parent / "data"
     ALLOWED_FILE_EXTENSIONS: List[str] = ['.mp3', '.mp4']
     MAX_FILE_SIZE_MB: int = 100
     
