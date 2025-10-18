@@ -150,11 +150,11 @@ const ChatBox = () => {
       <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 mt-8">
-            <p>👋 Welcome to the AI chat!</p>
+            <p>👋 Welcome to the Video & Speech Assistant AI chat!</p>
             <p className="text-sm mt-2">Start a conversation by typing a message below.</p>
             {!isConnected && (
               <div className="mt-4 p-3 bg-yellow-100 rounded-lg text-yellow-800">
-                ⚠️ Backend not connected. Please run: <code>python backend/app.py</code>
+                ⚠️ Backend not connected. Please run: <code>python backend/web/app.py</code>
               </div>
             )}
           </div>
