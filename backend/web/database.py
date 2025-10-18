@@ -7,13 +7,18 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from datetime import datetime
+import sys
+from pathlib import Path
 import logging
 
-from config import settings
+from config.service_config import settings
+
+# Add backend folder to py path
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
 
 logger = logging.getLogger(__name__)
 Base = declarative_base()
-
 
 # Database Models
 class ChatSession(Base):

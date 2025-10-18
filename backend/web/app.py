@@ -9,13 +9,14 @@ from typing import List
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import sys
 import uvicorn
 import logging
 import traceback
 from pathlib import Path
 
-from config import settings
-from database import (
+from config.service_config import settings
+from web.database import (
     get_database, 
     ChatSession, 
     ChatMessage, 
@@ -23,6 +24,10 @@ from database import (
     create_tables, 
     test_connection
 )
+
+# Add backend folder to py path
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__) 
@@ -115,6 +120,9 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_database)):
         if not request.message.strip():
             raise HTTPException(status_code=400, detail="Message cannot be empty")
         
+        # Ensure session exists before storing messages
+        await get_or_create_session(db, request.session_id)
+        
         user_message = await store_message(
             db, request.session_id, "user", request.message
         )
@@ -204,6 +212,9 @@ async def upload_file(
                 status_code=400,
                 detail=f"Invalid file type. Only {', '.join(settings.ALLOWED_FILE_EXTENSIONS)} files are allowed."
             )
+        
+        # Ensure session exists before storing file metadata
+        await get_or_create_session(db, session_id)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_filename = f"{timestamp}_{file.filename}"
@@ -483,25 +494,23 @@ def message_to_model(message: ChatMessage) -> MessageModel:
 
 async def generate_ai_response(user_message: str) -> str:
     """
-    Generate AI response using OpenAI
+    Generate AI response
     
     Args:
         user_message: User's input message
         
     Returns:
         AI-generated response text
-        
-    Raises:
-        Exception: If AI generation fails
     """
     try:
         logger.info(f"Generating AI response for: {user_message[:50]}...")
         
-        from langchain_openai import ChatOpenAI
+        # Check if OpenAI is configured TODO: Replace with local model
+        if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "":
+            logger.warning("OPENAI_API_KEY not configured, using mock response")
+            return f"✅ Message received: '{user_message[:100]}...' (Mock response - Configure OPENAI_API_KEY in .env for real AI responses)"
         
-        if not settings.OPENAI_API_KEY:
-            logger.error("OPENAI_API_KEY not configured")
-            return "Sorry, AI service is not configured properly."
+        from langchain_openai import ChatOpenAI
         
         llm = ChatOpenAI(
             model=settings.OPENAI_MODEL,
@@ -566,7 +575,7 @@ async def shutdown_event():
 if __name__ == '__main__':
     print("Starting FastAPI server...")
     uvicorn.run(
-        "app:app",
+        "web.app:app",
         host=settings.API_HOST,
         port=settings.API_PORT,
         reload=True,
