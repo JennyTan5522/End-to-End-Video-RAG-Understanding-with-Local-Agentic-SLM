@@ -7,19 +7,21 @@ import os
 import librosa
 import torch
 import yaml
+from transformers import AutoTokenizer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from moviepy import VideoFileClip
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, AutoTokenizer, pipeline
+from src.llm.inference import generate_qwen_response
+from src.prompt_engineering.templates import TRANSCRIPT_TEXT_SUMMARIZER_PROMPT, transcript_summary_parser
 
 logger = logging.getLogger(__name__)
 
-def extract_audio_from_video(video_file: str, output_folder: str = "data/audio") -> str:
+def extract_audio_from_video(video_file: str, output_folder: str) -> str:
     """
     Extract audio from video file and save as MP3
     
     Args:
-        video_file: Path to the input video file
-        output_folder: Directory to save extracted audio file (default: "data/audio")
+        video_file: Path to the video file
+        output_folder: Path to the saved folder
     
     Returns:
         str: Path to the generated audio file
@@ -28,11 +30,8 @@ def extract_audio_from_video(video_file: str, output_folder: str = "data/audio")
         if not os.path.exists(video_file):
             raise FileNotFoundError(f"Video file not found: {video_file}")
 
-        os.makedirs(output_folder, exist_ok=True)
-        logger.info(f"Output directory: {output_folder}")
-
-        video_name = os.path.splitext(os.path.basename(video_file))[0]
-        output_path = os.path.join(output_folder, f"{video_name}_audio.mp3")
+        file_name = os.path.splitext(os.path.basename(video_file))[0]
+        output_path = os.path.join(output_folder, f"{file_name}_audio.mp3")
 
         logger.info(f"Starting audio extraction from: {video_file}")
         logger.info(f"Output audio will be saved to: {output_path}")
@@ -51,14 +50,13 @@ def extract_audio_from_video(video_file: str, output_folder: str = "data/audio")
         logger.error(f"Failed to extract audio: {e}")
         raise
 
-def transcribe_audio_whisper(audio_path: str, model_name: str, output_dir: str = "data/transcript", chunk_length_s: int = 5, batch_size: int = 32) -> str:
+def transcribe_audio_whisper(audio_path: str, output_folder: str, transcribe_pipeline, chunk_length_s: int = 5, batch_size: int = 32) -> str:
     """
     Transcribe audio using Distil-Whisper model with time-based chunking
     
     Args:
         audio_path: Path to the input audio file (MP3 or WAV)
-        model_name: Hugging Face model name for Whisper (e.g., "distil-whisper/distil-small.en")
-        output_dir: Directory to save transcription YAML file (default: "data/transcript")
+        output_folder: Path to the saved folder
         chunk_length_s: Length in seconds of each audio chunk for grouping (default: 5)
         batch_size: Number of audio chunks to process in one batch (default: 32)
     
@@ -69,33 +67,11 @@ def transcribe_audio_whisper(audio_path: str, model_name: str, output_dir: str =
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        logger.info("Initializing Whisper model and processor...")
-        
-        torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-
-        transcribe_model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_name,
-            torch_dtype=torch_dtype,
-            low_cpu_mem_usage=True,
-            use_safetensors=True
-        )
-        processor = AutoProcessor.from_pretrained(model_name)
-
-        transcribe_pipeline = pipeline(
-            "automatic-speech-recognition",
-            model=transcribe_model,
-            tokenizer=processor.tokenizer,
-            feature_extractor=processor.feature_extractor,
-            torch_dtype=torch_dtype,
-            device="cuda:0" if torch.cuda.is_available() else "cpu"
-        )
-
         logger.info(f"Loading audio from: {audio_path}")
         audio, sr = librosa.load(audio_path, sr=16000)
 
         audio_name = os.path.splitext(os.path.basename(audio_path))[0]
-        os.makedirs(output_dir, exist_ok=True)
-        transcription_path = os.path.join(output_dir, f"{audio_name}_transcript.yaml")
+        transcription_path = os.path.join(output_folder, f"{audio_name}_transcript.yaml")
 
         logger.info("Starting transcription process...")
         transcriptions = transcribe_pipeline(
@@ -132,7 +108,6 @@ def transcribe_audio_whisper(audio_path: str, model_name: str, output_dir: str =
     except Exception as e:
         logger.error(f"Unexpected error during transcription: {e}")
         raise
-
 
 def count_tokens(text: str, model_name: str = "Qwen/Qwen2.5-VL-7B-Instruct") -> int:
     """
@@ -311,3 +286,83 @@ def chunk_transcript_text(transcript_path: str, max_chunk_token_size: int = 300,
     except Exception as e:
         logger.error(f"Error chunking transcript: {e}")
         raise
+
+def build_user_prompt_for_text_chunk(text: str, start_s: float, end_s: float) -> str:
+    return (
+        f"Timeframe: {start_s:.2f}s to {end_s:.2f}s\n\n"
+        f"Transcript:\n{text}\n\n"
+    )
+
+def summarize_transcript_chunks(chunks: list) -> list:
+    """
+    Summarize a list of transcript chunks and extract key topics for each segment.
+    
+    Uses a vision-language model to generate summaries and extract topics from each
+    transcript chunk. Results are structured for vector database indexing.
+
+    Args:
+        chunks: List of dictionaries, each containing:
+            - 'text': Transcript text content
+            - 'start': Start time in seconds
+            - 'end': End time in seconds
+            - 'groups': List of timeframe group identifiers
+
+    Returns:
+        list: List of structured dictionaries ready for indexing, each containing:
+            - 'text': Original transcript text
+            - 'summary': AI-generated summary of the segment
+            - 'topics': List of extracted topic keywords
+            - 'type': Always "txt" to indicate text-based content
+    """
+    summary_chunks = []
+
+    for i, data in enumerate(chunks, start=1):
+        try:
+            text = data["text"]
+            start_s = data['start']
+            end_s = data['end']
+
+            logger.info(f"Processing chunk {i}/{len(chunks)} ({start_s:.2f}s - {end_s:.2f}s)")
+            logger.debug(f"Chunk {i} text preview: {text[:100]}...")
+
+            # Run summarization model on this chunk
+            messages = [
+                {"role": "system", "content": [{"type": "text", "text": TRANSCRIPT_TEXT_SUMMARIZER_PROMPT}]},
+                {"role": "user",   "content": [{"type": "text", "text": build_user_prompt_for_text_chunk(text, start_s, end_s)}]},
+            ]
+            
+            summary_output = generate_qwen_response(processor, model, messages)
+            summary_info = transcript_summary_parser.parse(summary_output)
+
+            summary = ""
+            topics = []
+            try:
+                summary = summary_info.summary
+                topics = summary_info.topics
+            except Exception as e:
+                logger.error(f"Error extracting summary or topics in chunk {i}: {e}")
+                logger.debug(f"Raw model output for chunk {i}: {summary_output}")
+
+            # Log structured output for verification
+            logger.info(f"Chunk {i} processed successfully")
+            logger.info(f"  Timeframe: {start_s:.2f}s - {end_s:.2f}s")
+            logger.info(f"  Text: {text}")
+            logger.info(f"  Summary: {summary}")
+            logger.info(f"  Topics: {topics}")
+            logger.info("-" * 80)
+
+            # Store structured result
+            summary_chunks.append({
+                "text": text,
+                "summary": summary,
+                "topics": topics,
+                "type": "txt"
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to process chunk {i}/{len(chunks)}: {e}")
+            logger.debug(f"Chunk data: {data}")
+            continue
+
+    logger.info(f"Successfully summarized {len(summary_chunks)}/{len(chunks)} chunks")
+    return summary_chunks

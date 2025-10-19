@@ -8,18 +8,21 @@ import re
 import shutil
 from glob import glob
 from PIL import Image
+from typing import List, Dict
+from src.llm.inference import generate_qwen_response
+from src.prompt_engineering.templates import TRANSCRIPT_IMG_SUMMARIZER_PROMPT, transcript_summary_parser
 import logging
 
 logger = logging.getLogger(__name__)
 
-def extract_video_frames(video_file: str, frame_rate: float = 2.0, output_root: str = "data/frames", group_seconds: int = 5) -> str:
+def extract_video_frames(video_file: str, output_folder: str, frame_rate: float = 2.0, group_seconds: int = 5) -> str:
     """
     Extract frames from video at specified rate and group by time intervals
     
     Args:
         video_file: Path to the video file
+        output_folder: Path to the saved folder
         frame_rate: Frames to extract per second (e.g., 2.0 = one every 0.5s)
-        output_root: Root directory for extracted frames
         group_seconds: Duration of each group in seconds (e.g., 5 = group every 5s)
     
     Returns:
@@ -38,14 +41,11 @@ def extract_video_frames(video_file: str, frame_rate: float = 2.0, output_root: 
         logger.info(f"Video opened: {video_file}")
         logger.info(f"FPS: {fps:.2f}, Total Frames: {total_frames}")
 
-        video_name = os.path.splitext(os.path.basename(video_file))[0]
-        output_directory = os.path.join(output_root, f"{video_name}_frames")
-
-        if os.path.exists(output_directory):
-            logger.info(f"Cleaning existing folder: {output_directory}")
-            shutil.rmtree(output_directory)
-        os.makedirs(output_directory, exist_ok=True)
-        logger.info(f"Output folder: {output_directory}")
+        if os.path.exists(output_folder):
+            logger.info(f"Cleaning existing folder: {output_folder}")
+            shutil.rmtree(output_folder)
+        os.makedirs(output_folder, exist_ok=True)
+        logger.info(f"Output folder: {output_folder}")
 
         frame_count = 0
         saved_count = 0
@@ -71,7 +71,7 @@ def extract_video_frames(video_file: str, frame_rate: float = 2.0, output_root: 
                 end_group = start_group + group_seconds
 
                 group_folder = os.path.join(
-                    output_directory, 
+                    output_folder, 
                     f"group_{start_group:03d}s_{end_group:03d}s"
                 )
                 os.makedirs(group_folder, exist_ok=True)
@@ -88,9 +88,9 @@ def extract_video_frames(video_file: str, frame_rate: float = 2.0, output_root: 
         cap.release()
         cv2.destroyAllWindows()
 
-        logger.info(f"Extracted {saved_count} frames from {video_name}")
-        logger.info(f"Grouped every {group_seconds}s in: {output_directory}")
-        return output_directory
+        logger.info(f"Extracted {saved_count} frames from {video_file}")
+        logger.info(f"Grouped every {group_seconds}s in: {output_folder}")
+        return output_folder
 
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
@@ -185,3 +185,170 @@ def load_and_resize(image_path: str, max_edge: int = 768) -> Image.Image:
     except Exception as e:
         logger.error(f"Error loading image {image_path}: {e}")
         raise
+
+def summarize_frames(processor, model, folder: str, max_edge: int = 768) -> List[Dict]:
+    """
+    Summarize all frames in a folder by processing each image individually,
+    then generating an overall summary for the time segment.
+    
+    Args:
+        processor: Model processor for handling images and text
+        model: Vision-language model for generating summaries
+        folder: Path to folder containing grouped frames (e.g., 'group_005s_010s')
+        max_edge: Maximum edge length for image resizing in pixels (default: 768)
+    
+    Returns:
+        List[Dict]: Dictionary containing:
+            - text: Concatenated individual frame descriptions
+            - summary: Overall summary of the time segment
+            - topics: List of topics extracted from the segment
+            - type: Always "img" to indicate image-based content
+    """
+    start_s, end_s = extract_time_from_group_path(folder)
+    paths = list_images(folder)
+    if not paths:
+        logger.warning(f"No images found in: {folder}")
+        return {}
+
+    logger.info("=" * 80)
+    logger.info(f"Processing group folder: {os.path.basename(folder)}")
+    logger.info(f"  Timeframe: {start_s:.2f}s → {end_s:.2f}s")
+    logger.info(f"  Found {len(paths)} image(s) in folder: {folder}")
+    logger.info("=" * 80)
+
+    img_descriptions = []
+    for i, p in enumerate(paths, 1):
+        img = load_and_resize(p, max_edge=max_edge)
+
+        messages = [
+            {"role": "system", "content": [{"type": "text", "text": "Summarize this image clearly and concisely."}]},
+            {"role": "user", "content": [{"type": "image", "image": img},]},
+        ]
+        
+        img_description = generate_qwen_response(processor, model, messages, images=[img])
+        img_descriptions.append(img_description)
+        logger.info(f"[{i}/{len(paths)}] Frame: {os.path.basename(p)}")
+        logger.info(f"    ➜ Summary: {img_description}")
+
+    # generate image summary
+    text = '\n\n'.join(img_descriptions)
+    img_user_prompt = build_user_prompt_for_img_chunk(start_s, end_s, text)
+    summary_messages = [
+            {"role": "system", "content": [{"type": "text", "text": TRANSCRIPT_IMG_SUMMARIZER_PROMPT}]},
+            {"role": "user", "content": [{"type": "text", "text": img_user_prompt},]},
+    ]
+    summary_output = generate_qwen_response(processor, model, summary_messages)
+    summary_info = transcript_summary_parser.parse(summary_output)
+
+    # Extract summary and topics safely
+    summary = ""
+    topics = []
+    try:
+        summary = summary_info.summary
+        topics = summary_info.topics
+    except Exception as e:
+        logger.error(f"Failed to extract summary or topics: {e}")
+        logger.debug(f"Raw model output: {summary_output}")
+
+    # log for summary
+    logger.info("-" * 80)
+    logger.info(f"Group Summary for {os.path.basename(folder)} ({start_s:.2f}s → {end_s:.2f}s):")
+    logger.info(summary)
+    logger.info(f"Topics: {topics}")
+    logger.info("-" * 80)
+
+    # return structured result
+    summary_chunk = ({
+        "text": text,
+        "summary": summary,
+        "topics": topics,
+        "type": "img"
+    })
+
+    return summary_chunk
+
+def summarize_frame_groups(frame_groups: list[str], processor, model) -> list[dict]:
+    """
+    Process multiple frame groups and generate summaries for each time segment.
+    
+    Iterates through frame group folders, processes frames in each group using
+    the vision-language model, and returns structured summaries ready for indexing.
+    
+    Args:
+        frame_groups: List of paths to frame group folders (e.g., ['group_000s_005s', 'group_005s_010s'])
+                     Each folder should contain video frames for a specific time segment.
+        processor: Model processor for handling images and text
+        model: Vision-language model for generating summaries
+    
+    Returns:
+        list[dict]: List of summary dictionaries, each containing:
+            - 'text': Concatenated individual frame descriptions
+            - 'summary': Overall summary of the time segment
+            - 'topics': List of extracted topic keywords
+            - 'type': Always "img" to indicate image-based content
+    
+    Example:
+        >>> frame_groups = get_frame_groups("data/frames/video_frames")
+        >>> img_summaries = summarize_frame_groups(frame_groups, qwen_processor, qwen_chat_model)
+        >>> print(img_summaries[0]['summary'])
+        "The presenter demonstrates data visualization techniques..."
+        >>> print(len(img_summaries))
+        10
+    """
+    img_summary_chunks = []
+    total_groups = len(frame_groups)
+    failed_groups = 0
+    
+    logger.info(f"Starting processing of {total_groups} frame groups")
+    logger.info("=" * 80)
+    
+    for i, group in enumerate(frame_groups, start=1):
+        try:
+            logger.info(f"Processing group {i}/{total_groups}: {os.path.basename(group)}")
+            
+            group_summary = summarize_frames(processor, model, group)
+            
+            if group_summary:
+                img_summary_chunks.append(group_summary)
+                logger.info(f"Successfully processed {os.path.basename(group)}")
+            else:
+                logger.warning(f"Empty summary returned for {os.path.basename(group)}")
+                failed_groups += 1
+                
+        except Exception as e:
+            logger.error(f"Failed to process group {i}/{total_groups} ({os.path.basename(group)}): {e}")
+            failed_groups += 1
+            continue
+        
+        logger.info("-" * 80)
+    
+    # Final summary
+    logger.info("=" * 80)
+    logger.info(f"Frame group processing completed:")
+    logger.info(f"  Successful: {len(img_summary_chunks)}/{total_groups}")
+    logger.info(f"  Failed: {failed_groups}/{total_groups}")
+    logger.info("=" * 80)
+    
+    return img_summary_chunks
+    
+def get_frame_groups(parent_folder: str) -> List[Dict]:
+    """
+    Get all subfolders under parent_folder that match the 'group_*' naming pattern.
+    
+    These subfolders are expected to be created by extract_video_frames() and contain
+    frames grouped by time intervals (e.g., 'group_005s_010s' for 5-10 second segment).
+    
+    Args:
+        parent_folder: Path to parent directory containing group subfolders
+    
+    Returns:
+        List[Dict]: Sorted list of paths to group folders. Empty list if no groups found.
+    """
+    # find subfolders named group_*
+    groups = [p for p in glob(os.path.join(parent_folder, "group_*")) if os.path.isdir(p)]
+    groups = sorted(groups)
+
+    if not groups:
+        logger.warning(f"No 'group_*' subfolders under: {parent_folder}")
+        return []
+    return groups
