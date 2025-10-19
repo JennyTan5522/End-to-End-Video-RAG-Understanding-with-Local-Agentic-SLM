@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     
     # Database Configuration
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:chatpassword@localhost:5432/chatdb"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:admin@localhost:5432/chatdb"
     
     # OpenAI Configuration
     OPENAI_API_KEY: str = ""
@@ -46,6 +46,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
+        "https://*.proxy.runpod.net",
+        "*"
     ]
     ALLOW_ALL_ORIGINS: bool = True
     
