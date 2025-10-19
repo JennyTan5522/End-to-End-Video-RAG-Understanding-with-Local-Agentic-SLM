@@ -11,18 +11,22 @@ from PIL import Image
 from typing import List, Dict
 from src.llm.inference import generate_qwen_response
 from src.prompt_engineering.templates import TRANSCRIPT_IMG_SUMMARIZER_PROMPT, transcript_summary_parser
+from mcp.server.fastmcp import FastMCP
 import logging
 
 logger = logging.getLogger(__name__)
 
-def extract_video_frames(video_file: str, output_folder: str, frame_rate: float = 2.0, group_seconds: int = 5) -> str:
+mcp = FastMCP("Video Frames MCP Tools", port = 8002)
+
+@mcp.tool()
+async def extract_video_frames(video_file: str, output_folder: str, frame_rate: float = 0.25, group_seconds: int = 5) -> str:
     """
     Extract frames from video at specified rate and group by time intervals
     
     Args:
         video_file: Path to the video file
         output_folder: Path to the saved folder
-        frame_rate: Frames to extract per second (e.g., 2.0 = one every 0.5s)
+        frame_rate: Frames to extract per second (e.g., 2.0 = one every 0.5s; e.g. 0.25 = Capture 1 frame every 4 seconds ( fewer images))
         group_seconds: Duration of each group in seconds (e.g., 5 = group every 5s)
     
     Returns:
@@ -352,3 +356,7 @@ def get_frame_groups(parent_folder: str) -> List[Dict]:
         logger.warning(f"No 'group_*' subfolders under: {parent_folder}")
         return []
     return groups
+
+if __name__ == "__main__":
+    # Exposes Streamable HTTP endpoint at http://127.0.0.1:8000/mcp
+    mcp.run(transport="streamable-http")
