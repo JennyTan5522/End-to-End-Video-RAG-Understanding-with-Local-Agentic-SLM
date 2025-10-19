@@ -8,7 +8,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 def get_qdrant_client(url: str = "http://localhost:6333", prefer_grpc: bool = True) -> QdrantClient:
     """
     Initialize and return a Qdrant client
@@ -27,7 +26,6 @@ def get_qdrant_client(url: str = "http://localhost:6333", prefer_grpc: bool = Tr
     except Exception as e:
         logger.error(f"Failed to connect to Qdrant at {url}: {e}")
         raise ConnectionError(f"Failed to connect to Qdrant: {e}")
-
 
 def get_or_create_collection(qdrant_client: QdrantClient, collection_name: str, dense_vector_size: int = 384) -> bool:
     """
@@ -108,32 +106,3 @@ def collection_exists(qdrant_client: QdrantClient, collection_name: str) -> bool
     except Exception as e:
         logger.error(f"Error checking collection '{collection_name}': {e}")
         return False
-
-# Clean imports from the module
-# from src.vector_store import (
-#     get_qdrant_client,
-#     get_or_create_collection,
-#     build_hybrid_embeddings,
-#     build_qdrant_point,
-#     upsert_qdrant_points,
-#     search_qdrant
-# )
-
-# # Initialize client and collection
-# client = get_qdrant_client()
-# get_or_create_collection(client, "video_transcripts", vector_size=384)
-
-# # Generate embeddings
-# embeddings = build_hybrid_embeddings(tokenizer, model, "AI tutorial")
-
-# # Create and upload point
-# point = build_qdrant_point(
-#     dense_vector=embeddings['dense'],
-#     sparse_vector=embeddings['sparse'],
-#     text="AI tutorial",
-#     metadata={'source': 'youtube', 'duration': 120}
-# )
-# upsert_qdrant_points(client, "video_transcripts", [point])
-
-# # Search
-# results = search_qdrant(client, "video_transcripts", embeddings['dense'], limit=5)

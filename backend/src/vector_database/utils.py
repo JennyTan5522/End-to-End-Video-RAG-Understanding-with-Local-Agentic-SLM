@@ -33,7 +33,6 @@ def build_dense_embedding(tokenizer, dense_embedding_model, text: str) -> list[f
     
     return embeddings[0].tolist()
 
-
 def build_sparse_embedding(text: str) -> dict:
     """
     Generate sparse BM25 embedding for text
@@ -118,37 +117,79 @@ def index_chunks_to_qdrant(qdrant_client, collection_name: str, summary_chunks: 
         
     Note:
         Creates collection if it doesn't exist
+        
+    Raises:
+        Exception: If collection creation or indexing fails
     """
-    get_or_create_collection(qdrant_client, collection_name)
+    try:
+        get_or_create_collection(qdrant_client, collection_name)
+    except Exception as e:
+        logger.error(f"Failed to create or get collection '{collection_name}': {e}")
+        raise
     
     logger.info(f"Building Qdrant points for collection '{collection_name}'")
     
     qdrant_points = []
     total_chunks = len(summary_chunks)
+    failed_chunks = 0
     
     for i, chunk in enumerate(summary_chunks, 1):
-        text = chunk.get("text", "")
-        summary = chunk.get("summary", "")
-        topics = chunk.get("topics", [])
-        
-        embed_text = f"Summary: {summary}\nTopics: {', '.join(topics)}\n---\n{text}"
-        
-        dense_vector = build_dense_embedding(dense_tokenizer, dense_embedding_model, embed_text)
-        sparse_vector = build_sparse_embedding(embed_text)
-        
-        payload = {
-            "text": embed_text,
-            "summary": summary,
-            "topics": topics,
-        }
-        
-        point = build_qdrant_point(dense_vector, sparse_vector, payload)
-        qdrant_points.append(point)
-        
-        logger.debug(f"Built point {i}/{total_chunks} with topics: {topics}")
+        try:
+            text = chunk.get("text", "")
+            summary = chunk.get("summary", "")
+            topics = chunk.get("topics", [])
+            
+            embed_text = f"Summary: {summary}\nTopics: {', '.join(topics)}\n---\n{text}"
+            
+            # Build embeddings with error handling
+            try:
+                dense_vector = build_dense_embedding(dense_tokenizer, dense_embedding_model, embed_text)
+            except Exception as e:
+                logger.error(f"Failed to build dense embedding for chunk {i}/{total_chunks}: {e}")
+                failed_chunks += 1
+                continue
+            
+            try:
+                sparse_vector = build_sparse_embedding(embed_text)
+            except Exception as e:
+                logger.error(f"Failed to build sparse embedding for chunk {i}/{total_chunks}: {e}")
+                failed_chunks += 1
+                continue
+            
+            payload = {
+                "text": embed_text,
+                "summary": summary,
+                "topics": topics,
+            }
+            
+            try:
+                point = build_qdrant_point(dense_vector, sparse_vector, payload)
+                qdrant_points.append(point)
+                logger.debug(f"Built point {i}/{total_chunks} with topics: {topics}")
+            except Exception as e:
+                logger.error(f"Failed to build Qdrant point for chunk {i}/{total_chunks}: {e}")
+                failed_chunks += 1
+                continue
+                
+        except Exception as e:
+            logger.error(f"Unexpected error processing chunk {i}/{total_chunks}: {e}")
+            failed_chunks += 1
+            continue
     
-    logger.info(f"Upserting {len(qdrant_points)} points to '{collection_name}'")
-    upsert_qdrant_points(qdrant_client, collection_name, qdrant_points)
+    if not qdrant_points:
+        error_msg = f"No valid points created. All {total_chunks} chunks failed to process."
+        logger.error(error_msg)
+        raise Exception(error_msg)
     
-    logger.info(f"Successfully indexed {len(qdrant_points)} chunks to Qdrant")
+    if failed_chunks > 0:
+        logger.warning(f"Failed to process {failed_chunks}/{total_chunks} chunks")
+    
+    try:
+        logger.info(f"Upserting {len(qdrant_points)} points to '{collection_name}'")
+        upsert_qdrant_points(qdrant_client, collection_name, qdrant_points)
+    except Exception as e:
+        logger.error(f"Failed to upsert points to '{collection_name}': {e}")
+        raise
+    
+    logger.info(f"Successfully indexed {len(qdrant_points)}/{total_chunks} chunks to Qdrant")
     return len(qdrant_points)
