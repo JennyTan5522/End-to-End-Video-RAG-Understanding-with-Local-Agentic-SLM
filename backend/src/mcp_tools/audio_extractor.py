@@ -12,45 +12,137 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from moviepy import VideoFileClip
 from src.llm.inference import generate_qwen_response
 from src.prompt_engineering.templates import TRANSCRIPT_TEXT_SUMMARIZER_PROMPT, transcript_summary_parser
+from mcp.server.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
-def extract_audio_from_video(video_file: str, output_folder: str) -> str:
+mcp = FastMCP("Audio Processing MCP Tools", port = 8000)
+
+@mcp.tool()
+async def extract_audio_from_video(video_file: str, output_folder: str) -> str:
     """
-    Extract audio from video file and save as MP3
+    Extract audio track from a video file and save it as an MP3 file.
+    
+    This function processes a video file, extracts its audio track, and saves it as an MP3
+    file in the specified output folder. The output file is named using the original video
+    filename with '_audio.mp3' suffix.
     
     Args:
-        video_file: Path to the video file
-        output_folder: Path to the saved folder
+        video_file (str): Path to the input video file (e.g., 'meeting.mp4', '../data/video.avi').
+                          Can be absolute or relative path. Supported formats include MP4, AVI, MOV, etc.
+        output_folder (str): Directory path where the extracted audio file will be saved.
+                            Will be created if it doesn't exist.
     
     Returns:
-        str: Path to the generated audio file
+        str: Absolute path to the generated MP3 audio file.
+             Example: '/absolute/path/to/output_folder/video_name_audio.mp3'
+    
+    Raises:
+        FileNotFoundError: If the specified video file does not exist.
+        RuntimeError: If the video file contains no audio track.
+        Exception: For other errors during video processing or audio extraction.
+    
+    Example:
+        >>> audio_path = await extract_audio_from_video(
+        ...     video_file="../videos/meeting.mp4",
+        ...     output_folder="../audio_output"
+        ... )
+        >>> print(audio_path)
+        '/home/user/audio_output/meeting_audio.mp3'
+    
+    Note:
+        - The output folder is created automatically if it doesn't exist
+        - Video file is properly closed after processing to free resources
+        - Output MP3 uses standard MP3 codec for compatibility
     """
+    if not os.path.exists(video_file):
+        raise FileNotFoundError(f"Video file not found: {video_file}")
+
+    os.makedirs(output_folder, exist_ok=True)
+    base = os.path.splitext(os.path.basename(video_file))[0]
+    out_path = os.path.abspath(os.path.join(output_folder, f"{base}_audio.mp3"))
+
+    video = VideoFileClip(video_file)
     try:
-        if not os.path.exists(video_file):
-            raise FileNotFoundError(f"Video file not found: {video_file}")
-
-        file_name = os.path.splitext(os.path.basename(video_file))[0]
-        output_path = os.path.join(output_folder, f"{file_name}_audio.mp3")
-
-        logger.info(f"Starting audio extraction from: {video_file}")
-        logger.info(f"Output audio will be saved to: {output_path}")
-
-        video = VideoFileClip(video_file)
-        video.audio.write_audiofile(output_path, codec='mp3')
+        if video.audio is None:
+            raise RuntimeError("No audio track found in the video.")
+        video.audio.write_audiofile(out_path, codec="mp3")
+        return out_path
+    finally:
         video.close()
 
-        logger.info(f"Audio extraction completed: {output_path}")
-        return output_path
-
-    except FileNotFoundError as e:
-        logger.error(f"File not found: {e}")
-        raise
+from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration, AutoModelForSpeechSeq2Seq, pipeline
+def load_transcription_pipeline(model_name: str):
+    """
+    Initialize automatic speech recognition model and pipeline.
+    
+    Args:
+        model_name: HuggingFace model transcript model (whisper)
+    
+    Returns:
+        tuple: (transcribe_pipeline, processor, transcribe_model) where:
+            - transcribe_pipeline: Configured ASR pipeline ready for transcription
+            - processor: Audio processor with tokenizer and feature extractor
+            - transcribe_model: Loaded speech-to-text model
+    """
+    try:
+        logger.info(f"Initializing transcription pipeline with model: {model_name}")
+        
+        # Determine dtype based on GPU availability
+        device_available = torch.cuda.is_available()
+        torch_dtype = torch.float16 if device_available else torch.float32
+        device = "cuda:0" if device_available else "cpu"
+        
+        logger.info(f"Using device: {device}, dtype: {torch_dtype}")
+        
+        # Load model
+        logger.info("Loading transcription model...")
+        try:
+            transcribe_model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                model_name,
+                torch_dtype=torch_dtype,
+                low_cpu_mem_usage=True,
+                use_safetensors=True
+            )
+            logger.info("Transcription model loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to load transcription model: {e}")
+            raise
+        
+        # Load processor
+        logger.info("Loading audio processor...")
+        try:
+            processor = AutoProcessor.from_pretrained(model_name)
+            logger.info("Audio processor loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to load audio processor: {e}")
+            raise
+        
+        # Create pipeline
+        logger.info("Creating transcription pipeline...")
+        try:
+            transcribe_pipeline = pipeline(
+                "automatic-speech-recognition",
+                model=transcribe_model,
+                tokenizer=processor.tokenizer,
+                feature_extractor=processor.feature_extractor,
+                torch_dtype=torch_dtype,
+                device=device
+            )
+            logger.info("Transcription pipeline created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create transcription pipeline: {e}")
+            raise
+        
+        logger.info("Transcription pipeline initialization complete")
+        return transcribe_pipeline
+        
     except Exception as e:
-        logger.error(f"Failed to extract audio: {e}")
+        logger.error(f"Failed to initialize transcription pipeline '{model_name}': {e}")
         raise
 
-def transcribe_audio_whisper(audio_path: str, output_folder: str, transcribe_pipeline, chunk_length_s: int = 5, batch_size: int = 32) -> str:
+@mcp.tool()
+async def transcribe_audio_whisper(audio_path: str, output_folder: str, chunk_length_s: int = 5, batch_size: int = 32) -> str:
     """
     Transcribe audio using Distil-Whisper model with time-based chunking
     
@@ -74,6 +166,7 @@ def transcribe_audio_whisper(audio_path: str, output_folder: str, transcribe_pip
         transcription_path = os.path.join(output_folder, f"{audio_name}_transcript.yaml")
 
         logger.info("Starting transcription process...")
+        transcribe_pipeline = load_transcription_pipeline("distil-whisper/distil-small.en")
         transcriptions = transcribe_pipeline(
             audio,
             chunk_length_s=chunk_length_s,
@@ -128,7 +221,6 @@ def count_tokens(text: str, model_name: str = "Qwen/Qwen2.5-VL-7B-Instruct") -> 
     except Exception as e:
         logger.error(f"Error counting tokens: {e}")
         return 0
-
 
 def parse_timeframe(timeframe: str) -> tuple[float, float]:
     """
@@ -293,7 +385,7 @@ def build_user_prompt_for_text_chunk(text: str, start_s: float, end_s: float) ->
         f"Transcript:\n{text}\n\n"
     )
 
-def summarize_transcript_chunks(chunks: list) -> list:
+def summarize_transcript_chunks(chunks: list, processor, model) -> list:
     """
     Summarize a list of transcript chunks and extract key topics for each segment.
     
@@ -366,3 +458,7 @@ def summarize_transcript_chunks(chunks: list) -> list:
 
     logger.info(f"Successfully summarized {len(summary_chunks)}/{len(chunks)} chunks")
     return summary_chunks
+
+if __name__ == "__main__":
+    # Exposes Streamable HTTP endpoint at http://127.0.0.1:8000/mcp
+    mcp.run(transport="streamable-http")
