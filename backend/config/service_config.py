@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     DATA_FOLDER: Path = Path(__file__).parent.parent / "data"
     ALLOWED_FILE_EXTENSIONS: List[str] = ['.mp3', '.mp4']
     MAX_FILE_SIZE_MB: int = 100
+
+    # MCP Server COnfiguration
+    AUDIO_MCP_URL:str = "http://127.0.0.1:8002/mcp"
+    AUDIO_MCP_PORT: int = 8002
+    
+    VIDEO_FRAME_MCP_URL: str = "http://127.0.0.1:8003/mcp"
+    VIDEO_FRAME_MCP_PORT: int = 8003
     
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
