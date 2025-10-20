@@ -25,6 +25,11 @@ from web.database import (
     test_connection
 )
 
+from src.llm.model_loader import model_manager
+from src.llm.inference import generate_qwen_response
+from src.vector_database.qdrant_client import get_qdrant_client
+from src.vector_database.utils import query_rag_points, build_doc_context, generate_rag_response
+
 # Add backend folder to py path
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
@@ -141,7 +146,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_database)):
         logger.info(f"Stored user message: {user_message.id}")
         
         try:
-            ai_response_text = await generate_ai_response(request.message)
+            ai_response_text = await generate_ai_response(request.message, request.session_id, db)
         except Exception as ai_error:
             logger.error(f"AI generation failed: {ai_error}")
             ai_response_text = "Sorry, I'm having trouble processing your request right now."
@@ -675,12 +680,14 @@ def message_to_model(message: ChatMessage) -> MessageModel:
     )
 
 
-async def generate_ai_response(user_message: str) -> str:
+async def generate_ai_response(user_message: str, session_id: str = "default", db: AsyncSession = None) -> str:
     """
-    Generate AI response
+    Generate AI response using local RAG model
     
     Args:
         user_message: User's input message
+        session_id: Session identifier to determine collection name
+        db: Database session to query uploaded files
         
     Returns:
         AI-generated response text
@@ -688,35 +695,137 @@ async def generate_ai_response(user_message: str) -> str:
     try:
         logger.info(f"Generating AI response for: {user_message[:50]}...")
         
-        # Check if OpenAI is configured TODO: Replace with local model
-        if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "":
-            logger.warning("OPENAI_API_KEY not configured, using mock response")
-            return f"✅ Message received: '{user_message[:100]}...' (Mock response - Configure OPENAI_API_KEY in .env for real AI responses)"
+        # Step 1: Check if models are loaded
+        if not model_manager.is_loaded:
+            logger.info("Models not loaded, loading now...")
+            await model_manager.load_models()
         
-        from langchain_openai import ChatOpenAI
+        # Step 2: Initialize Qdrant client
+        logger.info("Initializing Qdrant client...")
+        try:
+            qdrant_client = get_qdrant_client()
+        except Exception as e:
+            logger.error(f"Failed to initialize Qdrant: {str(e)}")
+            return "I'm having trouble accessing the knowledge base. Please try again later."
         
-        llm = ChatOpenAI(
-            model=settings.OPENAI_MODEL,
-            temperature=settings.OPENAI_TEMPERATURE,
-            openai_api_key=settings.OPENAI_API_KEY
-        )
+        # Step 3: Get embedding model
+        try:
+            dense_embedding_model, dense_embedding_tokenizer = model_manager.get_embedding_model()
+        except Exception as e:
+            logger.error(f"Failed to get embedding model: {str(e)}")
+            return "I'm having trouble loading the AI models. Please try again later."
         
-        response = llm.invoke(user_message)
-        
-        if hasattr(response, 'content'):
-            return response.content
-        elif isinstance(response, str):
-            return response
+        # Step 4: Find the most recent MP4 video uploaded in this session
+        collection_name = None
+        if db:
+            try:
+                # Query the most recent MP4 file for this session
+                result = await db.execute(
+                    select(UploadedFile)
+                    .where(UploadedFile.session_id == session_id)
+                    .where(UploadedFile.filename.like('%.mp4'))
+                    .order_by(UploadedFile.uploaded_at.desc())
+                )
+                latest_video = result.scalars().first()
+                
+                if latest_video:
+                    # Extract timestamp and original filename from the saved filename
+                    # Format: YYYYMMDD_HHMMSS_originalname.mp4
+                    saved_filename = Path(latest_video.file_path).stem  # Remove .mp4
+                    
+                    # Split by underscore: [YYYYMMDD, HHMMSS, originalname...]
+                    parts = saved_filename.split('_', 2)
+                    if len(parts) >= 3:
+                        timestamp = f"{parts[0]}_{parts[1]}"
+                        original_name = parts[2]
+                        
+                        # Collection name format: YYYYMMDD_HHMMSS_videoname (without extension)
+                        collection_name = f"{timestamp}_{original_name}"
+                        logger.info(f"Using collection based on uploaded video: '{collection_name}'")
+                    else:
+                        # Fallback: use the full stem
+                        collection_name = saved_filename
+                        logger.info(f"Using full filename as collection: '{collection_name}'")
+                else:
+                    logger.info("No MP4 files found for this session")
+            except Exception as e:
+                logger.warning(f"Failed to query uploaded files: {str(e)}")
         else:
-            logger.warning(f"Unexpected response type: {type(response)}")
-            return str(response)
+            # Fallback: Try to find any collection in Qdrant
+            try:
+                collections = qdrant_client.get_collections()
+                if collections and len(collections.collections) > 0:
+                    collection_name = collections.collections[-1].name
+                    logger.info(f"Using most recent collection (no DB access): {collection_name}")
+            except Exception as e:
+                logger.warning(f"No collections found: {str(e)}")
+
+        # Get vision model for response generation
+        qwen_vision_processor, qwen_vision_chat_model = model_manager.get_qwen_vision_model()
+        
+        # Step 5: Query vector database if collection exists
+        if collection_name:
+            try:
+                logger.info(f"Querying vector database for: {user_message[:50]}...")
+                retrieved_points = query_rag_points(
+                    user_message,
+                    dense_embedding_model,
+                    dense_embedding_tokenizer,
+                    qdrant_client,
+                    collection_name
+                )
+                
+                if retrieved_points:
+                    logger.info("="*80)
+                    logger.info("RETRIEVAL POINTS")
+                    logger.info("="*80)
+                    logger.info(retrieved_points)
+                    
+                    # Build document context
+                    doc_context = build_doc_context(retrieved_points)
+                    logger.info("="*80)
+                    logger.info("DOCUMENT CONTEXT")
+                    logger.info("="*80)
+                    logger.info(doc_context)
+                    
+                    # Generate RAG response
+                    response = generate_rag_response(
+                        doc_context,
+                        user_message,
+                        qwen_vision_processor,
+                        qwen_vision_chat_model
+                    )
+                    
+                    if response and response.strip():
+                        logger.info("RAG response generated successfully")
+                        return response
+                    else:
+                        logger.warning("Generated response is empty")
+                        return "I'm sorry, I couldn't generate a meaningful response based on the available information."
+                else:
+                    logger.info("No relevant documents found in vector database")
+                    # Fall back to direct chat model
+            except Exception as e:
+                logger.warning(f"RAG query failed, falling back to direct response: {str(e)}")
+        
+        # Step 6: Fallback - Use chat model directly without RAG
+        logger.info("Using direct chat model (no RAG context)")
+        try:
+            response = generate_qwen_response(qwen_vision_processor, qwen_vision_chat_model, [{"role": "user", "content": user_message}])
             
-    except ImportError as e:
-        logger.error(f"Import error: {e}")
-        return "Sorry, required AI libraries are not installed."
+            if hasattr(response, 'content'):
+                return response.content
+            elif isinstance(response, str):
+                return response
+            else:
+                return str(response)
+        except Exception as e:
+            logger.error(f"Direct chat model failed: {str(e)}")
+            return f"Error while processing your message: '{user_message[:100]}...Please check backend log details.'"
+            
     except Exception as e:
         logger.error(f"Error generating AI response: {str(e)}\n{traceback.format_exc()}")
-        return f"Sorry, I encountered an error: {str(e)}"
+        return f"Sorry, I encountered an error while processing your request: {str(e)}"
 
 # Application Lifecycle Events
 @app.on_event("startup")
@@ -771,6 +880,6 @@ if __name__ == '__main__':
         "web.app:app",
         host=settings.API_HOST,
         port=settings.API_PORT,
-        reload=True,
+        reload=False,
         log_level="info"
     )
