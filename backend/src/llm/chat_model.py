@@ -5,7 +5,8 @@ Handles loading and configuration of Qwen2.5-VL models with optional 4-bit quant
 import torch
 import os
 import logging
-from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration, AutoModelForSpeechSeq2Seq, pipeline
+from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration, AutoModelForSpeechSeq2Seq, pipeline, AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from langchain_huggingface import ChatHuggingFace, HuggingFacePipeline
 
 logger = logging.getLogger(__name__)
 
@@ -152,4 +153,96 @@ def load_transcription_pipeline(model_name: str):
         
     except Exception as e:
         logger.error(f"Failed to initialize transcription pipeline '{model_name}': {e}")
+        raise
+
+
+def build_hf_chat_model(*, deterministic: bool, use_4bit: bool = True) -> ChatHuggingFace:
+    """
+    Create a ChatHuggingFace model backed by a HuggingFace pipeline.
+    
+    Args:
+        deterministic: If True, uses greedy decoding (router mode). If False, uses sampling (worker mode).
+        use_4bit: If True, loads quantized model with bitsandbytes (default: True).
+        
+    Returns:
+        ChatHuggingFace: Configured chat model wrapped in LangChain interface.
+        
+    Note:
+        - deterministic=True  -> router (greedy)
+        - deterministic=False -> workers (sampled)
+        - use_4bit=True       -> load quantized version with bitsandbytes
+    """
+    MODEL_ID = "Qwen/Qwen2.5-Coder-7B-Instruct"
+    logger.info(f"Building chat model: {MODEL_ID} (deterministic={deterministic}, use_4bit={use_4bit})")
+
+    try:
+        # --- Tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            logger.debug("Set pad_token to eos_token")
+
+        # --- Model (quantized or full precision)
+        model_kwargs = dict(trust_remote_code=True, device_map="auto")
+
+        if use_4bit and torch.cuda.is_available():
+            logger.info("Loading 4-bit quantized model")
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+            )
+            model = AutoModelForCausalLM.from_pretrained(
+                MODEL_ID,
+                quantization_config=bnb_config,
+                **model_kwargs,
+            )
+        else:
+            logger.info("Loading full precision model")
+            dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+            model = AutoModelForCausalLM.from_pretrained(
+                MODEL_ID,
+                torch_dtype=dtype,
+                **model_kwargs,
+            )
+
+        # Ensure generation config has proper tokens
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        model.generation_config.eos_token_id = getattr(
+            tokenizer, "eos_token_id", tokenizer.pad_token_id
+        )
+
+        # --- Generation settings
+        gen_kwargs = {
+            "max_new_tokens": 64 if deterministic else 256,
+            "pad_token_id": tokenizer.pad_token_id,
+            "eos_token_id": model.generation_config.eos_token_id,
+            "return_full_text": False,
+        }
+
+        if deterministic:
+            # Router mode (no randomness)
+            gen_kwargs.update(dict(temperature=0.0, do_sample=False))
+            logger.debug("Configured for deterministic generation (router mode)")
+        else:
+            # Worker mode (some randomness)
+            gen_kwargs.update(dict(temperature=0.2, top_p=0.9, do_sample=True))
+            logger.debug("Configured for sampled generation (worker mode)")
+
+        # --- HF pipeline
+        gen_pipe = pipeline(
+            task="text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            **gen_kwargs,
+        )
+
+        # --- LangChain wrapper
+        hf_llm = HuggingFacePipeline(pipeline=gen_pipe, model_id=MODEL_ID)
+        logger.info("Chat model built successfully")
+        return ChatHuggingFace(llm=hf_llm)
+        
+    except Exception as e:
+        logger.error(f"Failed to build chat model: {str(e)}", exc_info=True)
         raise
