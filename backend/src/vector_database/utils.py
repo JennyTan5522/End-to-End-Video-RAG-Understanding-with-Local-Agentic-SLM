@@ -301,7 +301,7 @@ def generate_rag_response(doc_context: str, user_query: str, processor, model):
         },
         {
             "role": "user",
-            "content": [{"type": "text", "text": format_user_query(f"User Query: {user_query}")}],
+            "content": [{"type": "text", "text": f"User Query: {user_query}"}],
         },
     ]
 
