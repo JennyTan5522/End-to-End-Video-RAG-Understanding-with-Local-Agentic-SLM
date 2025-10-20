@@ -727,36 +727,46 @@ async def startup_event():
             raise Exception("Database connection failed")
         
         await create_tables()
+
+        # Load global models
+        logger.info("Loading AI models...")
+        from src.llm.model_loader import model_manager
+        await model_manager.load_models()
+        logger.info("🤖 AI models loaded and ready")
         
-        print(f"🚀 {settings.API_TITLE} Starting...")
-        print(f"🗄️  PostgreSQL database initialized")
-        print(f"📊 API Documentation:")
-        print(f"   • Swagger UI: http://{settings.API_HOST}:{settings.API_PORT}/docs")
-        print(f"   • ReDoc: http://{settings.API_HOST}:{settings.API_PORT}/redoc")
-        print(f"🔗 API Endpoints:")
-        print(f"   • POST /api/chat - Send message to AI")
-        print(f"   • GET /api/chat/{{session_id}} - Get chat history")
-        print(f"   • POST /api/upload - Upload MP3/MP4 file")
-        print(f"   • GET /api/files/{{session_id}} - List uploaded files")
-        print(f"   • DELETE /api/files/{{file_id}} - Delete file")
-        print(f"   • DELETE /api/chat/{{session_id}} - Clear session")
-        print(f"   • GET /api/sessions - List all sessions")
-        print(f"   • GET /api/health - Health check")
-        print(f"💾 Data stored in: {settings.DATA_FOLDER}")
+        logger.info(f"🚀 {settings.API_TITLE} Starting...")
+        logger.info(f"🗄️  PostgreSQL database initialized")
+        logger.info(f"📊 API Documentation:")
+        logger.info(f"   • Swagger UI: http://{settings.API_HOST}:{settings.API_PORT}/docs")
+        logger.info(f"   • ReDoc: http://{settings.API_HOST}:{settings.API_PORT}/redoc")
+        logger.info(f"🔗 API Endpoints:")
+        logger.info(f"   • POST /api/chat - Send message to AI")
+        logger.info(f"   • GET /api/chat/{{session_id}} - Get chat history")
+        logger.info(f"   • POST /api/upload - Upload MP3/MP4 file")
+        logger.info(f"   • GET /api/files/{{session_id}} - List uploaded files")
+        logger.info(f"   • DELETE /api/files/{{file_id}} - Delete file")
+        logger.info(f"   • DELETE /api/chat/{{session_id}} - Clear session")
+        logger.info(f"   • GET /api/sessions - List all sessions")
+        logger.info(f"   • GET /api/health - Health check")
+        logger.info(f"💾 Data stored in: {settings.DATA_FOLDER}")
     except Exception as e:
         logger.error(f"Failed to initialize: {e}")
-        print("❌ Startup failed - check your PostgreSQL connection and .env file")
+        logger.info("❌ Startup failed - check your PostgreSQL connection and .env file")
         raise
 
 
-@app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown"""
-    print(f"🛑 {settings.API_TITLE} Shutting Down...")
+    logger.info(f"🛑 {settings.API_TITLE} Shutting Down...")
+    
+    # Close all database connections properly
+    from web.database import engine
+    await engine.dispose()
+    logger.info(" Database connections closed")
 
 
 if __name__ == '__main__':
-    print("Starting FastAPI server...")
+    logger.info("Starting FastAPI server...")
     uvicorn.run(
         "web.app:app",
         host=settings.API_HOST,
