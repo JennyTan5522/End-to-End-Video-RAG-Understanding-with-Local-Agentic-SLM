@@ -10,13 +10,14 @@ import yaml
 from transformers import AutoTokenizer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from moviepy import VideoFileClip
+from config.service_config import settings
 from src.llm.inference import generate_qwen_response
 from src.prompt_engineering.templates import TRANSCRIPT_TEXT_SUMMARIZER_PROMPT, transcript_summary_parser
 from mcp.server.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("Audio Processing MCP Tools", port = 8002)
+mcp = FastMCP("Audio Processing MCP Tools", port = settings.AUDIO_MCP_PORT)
 
 @mcp.tool()
 async def extract_audio_from_video(video_file: str, output_folder: str) -> str:

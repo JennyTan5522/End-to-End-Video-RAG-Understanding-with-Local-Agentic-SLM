@@ -9,6 +9,7 @@ import shutil
 from glob import glob
 from PIL import Image
 from typing import List, Dict
+from config.service_config import settings
 from src.llm.inference import generate_qwen_response
 from src.prompt_engineering.templates import TRANSCRIPT_IMG_SUMMARIZER_PROMPT, transcript_summary_parser
 from mcp.server.fastmcp import FastMCP
@@ -16,7 +17,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("Video Frames MCP Tools", port = 8003)
+mcp = FastMCP("Video Frames MCP Tools", port = settings.VIDEO_FRAME_MCP_PORT)
 
 @mcp.tool()
 async def extract_video_frames(video_file: str, output_folder: str, frame_rate: float = 0.25, group_seconds: int = 5) -> str:
