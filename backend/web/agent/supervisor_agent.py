@@ -38,7 +38,7 @@ class WorkflowSupervisor:
         )
         logger.info("WorkflowSupervisor initialized")
 
-    def supervisor_node(self, state: MessagesState) -> Command[Literal["general_question_workflow", "frame_processing_workflow", "audio_processing_workflow", "__end__"]]:
+    def supervisor_node(self, state: MessagesState) -> Command[Literal["general_question_workflow", "frame_processing_workflow", "audio_processing_workflow", "summary_workflow", "rag_workflow", "report_workflow", "__end__"]]:
         """
         Process the current state and determine the next workflow to execute.
         
@@ -116,7 +116,7 @@ class WorkflowSupervisor:
             if next_node.upper() == "FINISH" or next_node == "__end__":
                 goto = END
                 logger.info("Workflow terminated - routing to END")
-            elif next_node in ["general_question_workflow", "frame_processing_workflow", "audio_processing_workflow"]:
+            elif next_node in ["general_question_workflow", "frame_processing_workflow", "audio_processing_workflow", "summary_workflow", "rag_workflow", "report_workflow"]:
                 goto = next_node
                 logger.info(f"Routing to workflow: '{goto}'")
             else:
