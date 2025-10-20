@@ -18,11 +18,19 @@ class AgentSupervisorRouter(BaseModel):
     Attributes:
         next: The next workflow to route to, or __end__ to finish.
     """
-    next: Literal["general_question_workflow", "frame_processing_workflow", "audio_processing_workflow", "__end__"] = Field(
+    next: Literal[
+        "general_question_workflow", 
+        "frame_processing_workflow", 
+        "audio_processing_workflow", 
+        "summary_workflow",
+        "rag_workflow",
+        "report_workflow",
+        "__end__"
+    ] = Field(
         ..., 
         description="The next workflow to route to, or __end__ to finish."
     )
-
+    
 class ExtractVideoFileSchema(BaseModel):
     """
     Schema for extracting audio from a video file.
