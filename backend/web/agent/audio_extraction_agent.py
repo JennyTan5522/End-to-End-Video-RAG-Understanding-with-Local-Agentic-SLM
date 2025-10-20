@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+from config.service_config import settings
 from src.prompt_engineering.templates import ARGUMENT_EXTRACTION_PROMPT, argument_parser
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import MessagesState, END
@@ -33,7 +34,7 @@ class ExtractAudioFromVideoAgent:
         agent: The configured ReAct agent for parameter extraction.
     """
     
-    def __init__(self, llm, mcp_server_url):
+    def __init__(self, llm):
         """
         Initialize the ExtractAudioFromVideoAgent.
         
@@ -51,14 +52,14 @@ class ExtractAudioFromVideoAgent:
         self.AUDIO_EXTRACTION_TOOL_NAME = "extract_audio_from_video"
         self.AUDIO_TRANSCRIPTION_TOOL_NAME = "transcribe_audio_whisper"
 
-        self.MCP_SERVER_URL = mcp_server_url
+        self.MCP_SERVER_URL = settings.AUDIO_MCP_URL
         self.parser = argument_parser
         self.agent = create_react_agent(
             self.llm,
             tools=[],
             prompt=ARGUMENT_EXTRACTION_PROMPT
         )
-        logger.info(f"ExtractAudioFromVideoAgent initialized with MCP server URL: {mcp_server_url}")
+        logger.info(f"ExtractAudioFromVideoAgent initialized with MCP server URL: {self.MCP_SERVER_URL}")
 
     async def run_audio_extraction_server(self, video_file: str, output_folder: str):
         """

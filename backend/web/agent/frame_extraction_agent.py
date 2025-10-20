@@ -6,6 +6,7 @@ from langgraph.graph import MessagesState, END
 from langgraph.types import Command
 from langgraph.prebuilt import create_react_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from config.service_config import settings
 from src.prompt_engineering.templates import ARGUMENT_EXTRACTION_PROMPT, argument_parser
 from web.mcp_tools.video_frames_extractor import get_frame_groups
 from typing import Literal
@@ -32,7 +33,7 @@ class ExtractVideoFramesAgent:
         agent: The configured ReAct agent for parameter extraction.
     """
     
-    def __init__(self, llm, mcp_server_url):
+    def __init__(self, llm):
         """
         Initialize the ExtractVideoFramesAgent.
         
@@ -43,14 +44,14 @@ class ExtractVideoFramesAgent:
         self.llm = llm
         self.VIDEO_FRAME_EXTRACTION_SERVER_NAME = "mcp_video_frame_extraction"
         self.VIDEO_FRAME_EXTRACTION_TOOL_NAME = "extract_video_frames"
-        self.MCP_SERVER_URL = mcp_server_url
+        self.MCP_SERVER_URL = settings.VIDEO_FRAME_MCP_URL
         self.parser = argument_parser
         self.agent = create_react_agent(
             self.llm,
             tools=[],
             prompt=ARGUMENT_EXTRACTION_PROMPT
         )
-        logger.info(f"ExtractVideoFramesAgent initialized with MCP server URL: {mcp_server_url}")
+        logger.info(f"ExtractVideoFramesAgent initialized with MCP server URL: {self.MCP_SERVER_URL}")
 
     async def run_frame_extraction_server(self, video_file: str, frames_output_folder: str):
         """
