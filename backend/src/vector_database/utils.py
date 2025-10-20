@@ -2,11 +2,9 @@
 Vector Store Operations for Qdrant
 Handles point creation, upserting, and semantic search operations
 """
-from qdrant_client.models import PointStruct, models
+from qdrant_client.models import PointStruct
 from langchain_qdrant import FastEmbedSparse
 from src.vector_database.qdrant_client import get_or_create_collection
-from src.prompt_engineering.templates import rag_output_parser, RAG_QA_PROMPT
-from src.llm.inference import generate_qwen_response
 from uuid import uuid4
 import torch
 import logging
@@ -103,7 +101,7 @@ def upsert_qdrant_points(qdrant_client, collection_name: str, points: list[Point
         logger.error(f"Failed to upsert points to '{collection_name}': {e}")
         raise
 
-def index_chunks_to_qdrant(qdrant_client, collection_name: str, summary_chunks: list[dict], dense_tokenizer, dense_embedding_model) -> int:
+def index_chunks_to_qdrant(qdrant_client, collection_name: str, summary_chunks: list[dict], dense_tokenizer, dense_embedding_model, store_type: str) -> int:
     """
     Index transcript/image chunks into Qdrant with hybrid embeddings
     
@@ -162,6 +160,8 @@ def index_chunks_to_qdrant(qdrant_client, collection_name: str, summary_chunks: 
                 "text": embed_text,
                 "summary": summary,
                 "topics": topics,
+                "type": store_type,
+                "sequence_index": i
             }
             
             try:
@@ -195,116 +195,3 @@ def index_chunks_to_qdrant(qdrant_client, collection_name: str, summary_chunks: 
     
     logger.info(f"Successfully indexed {len(qdrant_points)}/{total_chunks} chunks to Qdrant")
     return len(qdrant_points)
-
-def query_rag_points(user_query: str, dense_embedding_model, dense_tokenizer, qdrant_client, collection_name: str, limit: int = 10):
-    """
-    Run hybrid (dense + sparse) retrieval against Qdrant using RRF fusion.
-
-    Args:
-        user_query (str): The user question/query.
-        dense_tokenizer: Tokenizer instance for the dense model.
-        dense_embedding_model: Dense embedding model instance.
-        qdrant_client: Initialized QdrantClient.
-        collection_name (str): Qdrant collection to search.
-        limit (int): Per-branch limit for Prefetch (dense and sparse).
-
-    Returns:
-        retrieved_points: Qdrant query result.
-    """
-    try:
-        # Build embeddings
-        dense_vector = build_dense_embedding(dense_tokenizer, dense_embedding_model, user_query)
-        sparse_vector = build_sparse_embedding(user_query)
-    
-        # Query Qdrant with RRF fusion
-        retrieved_points = qdrant_client.query_points(
-            collection_name=collection_name,
-            prefetch=[
-                models.Prefetch(
-                    query=models.SparseVector(indices=sparse_vector.indices, values=sparse_vector.values),
-                    using="sparse_embedding",
-                    limit=limit
-                ),
-                models.Prefetch(
-                    query=dense_vector,
-                    using="dense_embedding",
-                    limit=limit
-                )
-            ],
-            query=models.FusionQuery(fusion=models.Fusion.RRF)
-        )
-    
-        logger.info(f"Retrieval Points: \n{retrieved_points}")
-        return retrieved_points
-    except Exception as e:
-        logger.error(f"Error while retrieving the related documents from Qdrant Vector Store: {e}")
-
-def build_doc_context(retrieved_points, top_k: int = 5) -> str:
-    """
-    Build a formatted document context string from retrieved Qdrant points for LLM input.
-
-    Args:
-        retrieved_points: Result object from qdrant_client.query_points().
-        top_k (int): Number of top retrieved points to include in the context.
-
-    Returns:
-        str: A structured string combining summaries, topics, and transcript text.
-    """
-    try:
-        doc_context = ""
-    
-        for point in retrieved_points.points[:top_k]:
-            payload = point.payload
-            score = point.score
-            summary = payload.get("summary", "")
-            text = payload.get("transcript_text", "")
-            topics = payload.get("topics", "")
-            doc_type = payload.get("type", "")
-    
-            context_block = (
-                f"### Document Type: {doc_type}\n"
-                f"**Relevance Score:** {score:.4f}\n\n"
-                f"**Summary:** {summary}\n\n"
-                f"**Topics:** {', '.join(topics) if isinstance(topics, list) else topics}\n\n"
-                f"**Transcript Text:**\n{text}\n"
-                "------------------------------------------------------------\n"
-            )
-            doc_context += context_block
-
-        logger.info(f"Document Context for LLM: \n{doc_context}")
-        return doc_context
-    except Exception as e:
-        logger.error(f"Error while building the document context: {e}")
-
-def generate_rag_response(doc_context: str, user_query: str, processor, model):
-    """
-    Generate an LLM response using a RAG-style QA prompt and retrieved document context.
-
-    Args:
-        doc_context (str): Formatted text context built from retrieved Qdrant points.
-        user_query (str): The user’s question or query.
-        processor: The model’s processor/tokenizer for the Qwen model.
-        model: The Qwen model instance.
-
-    Returns:
-        The generated model response object.
-    """
-    # Build full system prompt
-    complete_prompt = RAG_QA_PROMPT.format(doc_context=doc_context) + rag_output_parser.get_format_instructions()
-
-    # Construct messages
-    rag_messages = [
-        {
-            "role": "system",
-            "content": [{"type": "text", "text": complete_prompt}],
-        },
-        {
-            "role": "user",
-            "content": [{"type": "text", "text": f"User Query: {user_query}"}],
-        },
-    ]
-
-    # Generate and return the model response
-    response = generate_qwen_response(processor, model, rag_messages)
-    parse_response = rag_output_parser.parse(response).response_text
-    return parse_response
