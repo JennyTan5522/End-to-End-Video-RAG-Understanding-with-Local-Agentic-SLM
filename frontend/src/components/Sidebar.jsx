@@ -125,10 +125,10 @@ const Sidebar = () => {
                             setActiveWorkflowId(null)
                         }, 5000)
                         
-                        // Reload chat to show completion message
+                        // Reload chat to show completion message (only once)
                         const sessionId = localStorage.getItem('sessionId') || 'default'
-                        window.dispatchEvent(new CustomEvent('videoUploaded', { 
-                            detail: { filename: 'video', sessionId } 
+                        window.dispatchEvent(new CustomEvent('workflowCompleted', { 
+                            detail: { filename: 'video', sessionId, status: status.status } 
                         }))
                     }
                 }

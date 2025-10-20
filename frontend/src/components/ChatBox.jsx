@@ -24,6 +24,7 @@ const ChatBox = () => {
   const [isConnected, setIsConnected] = useState(false)
   const [isTauriMode, setIsTauriMode] = useState(false)
   const messagesEndRef = useRef(null)
+  const loadingTimeoutRef = useRef(null)
   
   // Auto-scroll to bottom when new messages are added
   const scrollToBottom = () => {
@@ -43,17 +44,29 @@ const ChatBox = () => {
     // Listen for video upload events to reload chat
     const handleVideoUpload = (event) => {
       console.log('Video uploaded, reloading chat history...', event.detail)
-      // Delay reload to allow backend to process and store messages
-      setTimeout(() => {
-        loadChatHistory()
-      }, 1000)
+      // Use debounced reload to prevent duplicate calls
+      debouncedLoadChatHistory()
+    }
+    
+    // Listen for workflow completion events to reload chat
+    const handleWorkflowComplete = (event) => {
+      console.log('Workflow completed, reloading chat history...', event.detail)
+      // Use debounced reload to prevent duplicate calls
+      debouncedLoadChatHistory()
     }
     
     window.addEventListener('videoUploaded', handleVideoUpload)
+    window.addEventListener('workflowCompleted', handleWorkflowComplete)
     
-    // Cleanup listener on unmount
+    // Cleanup listeners on unmount
     return () => {
       window.removeEventListener('videoUploaded', handleVideoUpload)
+      window.removeEventListener('workflowCompleted', handleWorkflowComplete)
+      
+      // Clear any pending timeout
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+      }
     }
   }, [])
   
@@ -76,6 +89,20 @@ const ChatBox = () => {
     } catch (error) {
       console.error('Failed to load chat history:', error)
     }
+  }
+  
+  // Debounced version to prevent rapid successive calls
+  const debouncedLoadChatHistory = () => {
+    // Clear any pending reload
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current)
+    }
+    
+    // Set new reload with delay
+    loadingTimeoutRef.current = setTimeout(() => {
+      loadChatHistory()
+      loadingTimeoutRef.current = null
+    }, 500) // 500ms debounce
   }
   
   const sendMessage = async () => {
