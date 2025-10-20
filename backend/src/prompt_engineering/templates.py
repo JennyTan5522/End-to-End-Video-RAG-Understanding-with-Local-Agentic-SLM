@@ -1,9 +1,10 @@
 from langchain_core.output_parsers import PydanticOutputParser
-from src.prompt_engineering.schemas import TranscriptInfo, AgentSupervisorRouter, ExtractVideoFileSchema
+from src.prompt_engineering.schemas import TranscriptInfo, AgentSupervisorRouter, ExtractVideoFileSchema, RAGAnswerSchema
 
 transcript_summary_parser = PydanticOutputParser(pydantic_object=TranscriptInfo)
 supervisor_output_parser = PydanticOutputParser(pydantic_object=AgentSupervisorRouter)
 argument_parser = PydanticOutputParser(pydantic_object=ExtractVideoFileSchema)
+rag_output_parser = PydanticOutputParser(pydantic_object=RAGAnswerSchema)
 
 TRANSCRIPT_IMG_SUMMARIZER_PROMPT = f"""
 You are an expert assistant skilled in summarizing image descriptions within their respective timeframes.
