@@ -16,7 +16,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("Video Frames MCP Tools", port = 8002)
+mcp = FastMCP("Video Frames MCP Tools", port = 8003)
 
 @mcp.tool()
 async def extract_video_frames(video_file: str, output_folder: str, frame_rate: float = 0.25, group_seconds: int = 5) -> str:

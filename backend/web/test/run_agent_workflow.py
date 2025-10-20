@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     try:
         user_request = "Please process this video file: data/weekly_meeting.mp4"
-        audio_mcp_server_url = "http://127.0.0.1:8000/mcp"
-        frame_mcp_server_url = "http://127.0.0.1:8002/mcp"
+        audio_mcp_server_url = "http://127.0.0.1:8002/mcp"
+        frame_mcp_server_url = "http://127.0.0.1:8003/mcp"
         logger.info("Starting workflow application")
         app = asyncio.run(build_agent_workflow(user_request, audio_mcp_server_url, frame_mcp_server_url))
         logger.info("Workflow application built successfully")

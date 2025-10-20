@@ -16,7 +16,7 @@ from mcp.server.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("Audio Processing MCP Tools", port = 8000)
+mcp = FastMCP("Audio Processing MCP Tools", port = 8002)
 
 @mcp.tool()
 async def extract_audio_from_video(video_file: str, output_folder: str) -> str:
