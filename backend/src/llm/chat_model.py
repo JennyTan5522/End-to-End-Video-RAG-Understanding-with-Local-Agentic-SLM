@@ -215,7 +215,7 @@ def build_hf_chat_model(*, deterministic: bool, use_4bit: bool = True) -> ChatHu
 
         # --- Generation settings
         gen_kwargs = {
-            "max_new_tokens": 64 if deterministic else 256,
+            "max_new_tokens": 256 if deterministic else 2048,
             "pad_token_id": tokenizer.pad_token_id,
             "eos_token_id": model.generation_config.eos_token_id,
             "return_full_text": False,
