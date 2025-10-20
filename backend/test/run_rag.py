@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Optional
 from src.vector_database.qdrant_client import get_qdrant_client
-from src.vector_database.utils import query_rag_points, build_doc_context, generate_rag_response
+from src.vector_database.retriever import query_rag_points, build_doc_context, generate_rag_response
 from src.llm.model_loader import model_manager
 
 # Configure logging
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         
         # Input parameters
         user_query = "Generate summary on the Friday meeting"
-        collection_name = "20251020_093928_weekly_meeting"
+        collection_name = "20251020_154727_weekly_meeting"
         
         # Validate inputs
         if not user_query or user_query.strip() == "":
