@@ -112,7 +112,7 @@ Your job is to analyze the user's request and decide which specialized workflow 
 
 ### Example 2: Video File Processing
 **User Input:**
-> Please process this video file: workspace/backend/data/meeting.mp4
+> Please process this video file: data/20251020_080531_weekly_meeting.mp4
 
 **Expected Output:**
 {{
@@ -123,7 +123,7 @@ Your job is to analyze the user's request and decide which specialized workflow 
 
 ### Example 3: Audio File Processing
 **User Input:**
-> Please process this audio file: workspace/backend/data/meeting.mp3
+> Please process this audio file: data/20251020_080531_weekly_meeting.mp3
 
 **Expected Output:**
 {{
@@ -172,18 +172,18 @@ The tool you are preparing inputs for is:
 
 ### Example 1
 **User Input:**
-> Please extract audio from this video file ../data/weekly_meeting.mp4 and save it to ../data/
+> Please process this video file: data/20251020_080531_weekly_meeting.mp4
 
 **Expected Output:**
 {{
-  "video_file": "../data/weekly_meeting.mp4"
+  "video_file": "data/20251020_080531_weekly_meeting.mp4"
 }}
 
 ---
 
 ### Example 2
 **User Input:**
-> Convert my Zoom recording ./records/meeting.mp4 into an MP3 file and store it under ./records/output/
+> Convert my Zoom recording ./records/meeting.mp4 into an MP3 file
 
 **Expected Output:**
 {{
