@@ -165,9 +165,9 @@ const ChatBox = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
+    <div className="flex-1 min-h-0 flex flex-col bg-white">
       {/* Header */}
-      <div className="p-4 border-b bg-gray-50">
+      <div className="sticky min-h-0 top-0 z-10 p-4 border-b bg-gray-50">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">💬 AI Chat Interface</h1>

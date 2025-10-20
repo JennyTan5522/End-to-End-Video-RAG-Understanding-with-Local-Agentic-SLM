@@ -175,7 +175,7 @@ const Sidebar = () => {
     }
     
     return (
-        <div className='flex flex-col h-screen min-w-72 p-5 dark:bg-gradient-to-b from-[#242124]/30 to-[#000000]/30 border-r border-[#80609F]/30 backdrop-blur-3xl transition-all duration-500 max-md:absolute left-0 z-10'>
+        <div className='flex flex-col h-screen w-72 flex-shrink-0 p-5 dark:bg-gradient-to-b from-[#242124]/30 to-[#000000]/30 border-r border-[#80609F]/30 backdrop-blur-3xl transition-all duration-500 max-md:absolute left-0 z-10 overflow-y-auto'>
             {/* Header Section */}
             <div className='mb-6'>
                 <div className='flex items-center gap-3 mb-4'>
