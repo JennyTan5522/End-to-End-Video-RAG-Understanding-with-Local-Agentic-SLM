@@ -202,17 +202,40 @@ class ExtractAudioFromVideoAgent:
         logger.info("="*80)
         
         try:
+            # Extract user request from first message
+            logger.debug("Extracting original user request from message history...")
+            first_message = state["messages"][0]
+            
+            # Handle different message formats
+            if isinstance(first_message, dict):
+                # Message is a dict like {"role": "user", "content": "..."}
+                message_content = first_message.get("content", "")
+                logger.debug(f"Extracted content from dict message: '{message_content}'")
+            elif isinstance(first_message, AIMessage):
+                # AIMessage with potentially structured content
+                if isinstance(first_message.content, list) and len(first_message.content) > 0:
+                    first_item = first_message.content[0]
+                    if isinstance(first_item, dict):
+                        message_content = first_item.get("text", str(first_item))
+                    else:
+                        message_content = str(first_item)
+                else:
+                    message_content = str(first_message.content)
+                logger.debug(f"Extracted content from AIMessage: '{message_content}'")
+            elif hasattr(first_message, 'content'):
+                # HumanMessage or other LangChain message type
+                message_content = first_message.content
+                logger.debug(f"Extracted content from message object: '{message_content}'")
+            else:
+                # Fallback: convert to string
+                message_content = str(first_message)
+                logger.warning(f"Unknown message type, converted to string: '{message_content}'")
+            
+            logger.info(f"User request: '{message_content}'")
+            logger.info("-"*80)
+            
             # Invoke agent to extract parameters
             logger.debug("Invoking parameter extraction agent...")
-            last_message = state["messages"][-1]
-            # Extract the actual content from the message
-            if isinstance(last_message, AIMessage):
-                # If it's an AIMessage with structured content, convert it to string
-                message_content = str(last_message.content)
-            else:
-                # If it's already a HumanMessage or other type, get its content
-                message_content = last_message.content if hasattr(last_message, 'content') else str(last_message)
-            
             response = self.agent.invoke({"messages": [HumanMessage(content=message_content)]})
 
             last_msg = response.get("messages", [])[-1] if response.get("messages") else None
