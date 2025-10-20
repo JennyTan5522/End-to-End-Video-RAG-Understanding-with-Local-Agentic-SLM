@@ -39,6 +39,22 @@ const ChatBox = () => {
     setIsTauriMode(isTauri())
     checkApiConnection()
     loadChatHistory()
+    
+    // Listen for video upload events to reload chat
+    const handleVideoUpload = (event) => {
+      console.log('Video uploaded, reloading chat history...', event.detail)
+      // Delay reload to allow backend to process and store messages
+      setTimeout(() => {
+        loadChatHistory()
+      }, 1000)
+    }
+    
+    window.addEventListener('videoUploaded', handleVideoUpload)
+    
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('videoUploaded', handleVideoUpload)
+    }
   }, [])
   
   const checkApiConnection = async () => {

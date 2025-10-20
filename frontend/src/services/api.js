@@ -195,6 +195,26 @@ export async function deleteFile(fileId) {
   }
 }
 
+/**
+ * Get workflow processing status
+ * @param {string} workflowId - The workflow ID
+ * @returns {Promise<Object>} The workflow status
+ */
+export async function getWorkflowStatus(workflowId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/workflow/${workflowId}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to get workflow status:', error);
+    throw error;
+  }
+}
+
 export default {
   sendChatMessage,
   getChatHistory,
@@ -203,5 +223,6 @@ export default {
   uploadFile,
   getUploadedFiles,
   deleteFile,
+  getWorkflowStatus,
   isTauri
 };

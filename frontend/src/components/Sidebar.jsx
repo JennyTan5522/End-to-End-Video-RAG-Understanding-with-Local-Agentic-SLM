@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { useAppContext } from '../context/AppContext' 
-import { uploadFile, getUploadedFiles, deleteFile } from '../services/api'
+import { uploadFile, getUploadedFiles, deleteFile, getWorkflowStatus } from '../services/api'
+import ProgressBar from './ProgressBar'
 
 const Sidebar = () => {
     // Get context values for managing chats and user data
@@ -11,7 +12,10 @@ const Sidebar = () => {
     const [uploadedFiles, setUploadedFiles] = useState([])
     const [isUploading, setIsUploading] = useState(false)
     const [uploadMessage, setUploadMessage] = useState('')
+    const [workflowStatus, setWorkflowStatus] = useState(null)
+    const [activeWorkflowId, setActiveWorkflowId] = useState(null)
     const fileInputRef = useRef(null)
+    const statusCheckIntervalRef = useRef(null)
     
     // Load uploaded files on component mount
     React.useEffect(() => {
@@ -60,8 +64,24 @@ const Sidebar = () => {
                 if (fileInputRef.current) {
                     fileInputRef.current.value = ''
                 }
-                // Clear success message after 3 seconds
-                setTimeout(() => setUploadMessage(''), 3000)
+                
+                // Trigger chat reload event for MP4 files (to show workflow messages)
+                const isMP4 = fileName.endsWith('.mp4')
+                if (isMP4) {
+                    // Dispatch custom event to notify ChatBox to reload
+                    window.dispatchEvent(new CustomEvent('videoUploaded', { 
+                        detail: { filename: file.name, sessionId, result } 
+                    }))
+                    setUploadMessage(`✅ ${result.message} - Video processing started! Check the chat for updates.`)
+                    
+                    // Start polling workflow status using workflow_id from response
+                    if (result.workflow_id) {
+                        startWorkflowStatusPolling(result.workflow_id)
+                    }
+                }
+                
+                // Clear success message after 5 seconds
+                setTimeout(() => setUploadMessage(''), 5000)
             }
         } catch (error) {
             console.error('Upload failed:', error)
@@ -77,6 +97,55 @@ const Sidebar = () => {
             setIsUploading(false)
         }
     }
+    
+    const startWorkflowStatusPolling = (workflowId) => {
+        setActiveWorkflowId(workflowId)
+        
+        // Clear any existing interval
+        if (statusCheckIntervalRef.current) {
+            clearInterval(statusCheckIntervalRef.current)
+        }
+        
+        // Poll every 2 seconds
+        statusCheckIntervalRef.current = setInterval(async () => {
+            try {
+                const status = await getWorkflowStatus(workflowId)
+                
+                if (status.success) {
+                    setWorkflowStatus(status)
+                    
+                    // Stop polling if completed or failed
+                    if (status.status === 'completed' || status.status === 'failed') {
+                        clearInterval(statusCheckIntervalRef.current)
+                        statusCheckIntervalRef.current = null
+                        
+                        // Clear progress bar after 5 seconds
+                        setTimeout(() => {
+                            setWorkflowStatus(null)
+                            setActiveWorkflowId(null)
+                        }, 5000)
+                        
+                        // Reload chat to show completion message
+                        const sessionId = localStorage.getItem('sessionId') || 'default'
+                        window.dispatchEvent(new CustomEvent('videoUploaded', { 
+                            detail: { filename: 'video', sessionId } 
+                        }))
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to check workflow status:', error)
+            }
+        }, 2000)
+    }
+    
+    // Cleanup interval on unmount
+    React.useEffect(() => {
+        return () => {
+            if (statusCheckIntervalRef.current) {
+                clearInterval(statusCheckIntervalRef.current)
+            }
+        }
+    }, [])
     
     const triggerFileInput = () => {
         fileInputRef.current?.click()
@@ -144,6 +213,18 @@ const Sidebar = () => {
                 {uploadMessage && (
                     <div className='mt-2 text-sm text-center p-2 rounded bg-gray-100 dark:bg-gray-800'>
                         {uploadMessage}
+                    </div>
+                )}
+                
+                {/* Workflow Progress Bar */}
+                {workflowStatus && (
+                    <div className='mt-4'>
+                        <ProgressBar
+                            progress={workflowStatus.progress}
+                            message={workflowStatus.message}
+                            currentStep={workflowStatus.current_step}
+                            status={workflowStatus.status}
+                        />
                     </div>
                 )}
                 

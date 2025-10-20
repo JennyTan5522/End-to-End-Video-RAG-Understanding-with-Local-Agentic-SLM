@@ -71,12 +71,21 @@ class FileUploadResponse(BaseModel):
     file_size: int
     file_id: int
     message: str
+    workflow_id: str = None  # Optional, only for MP4 files
 
 
 class FileListResponse(BaseModel):
     """Response model for file list"""
     success: bool
     files: List[dict]
+
+class WorkflowStatusResponse(BaseModel):
+    """Response model for workflow status"""
+    success: bool
+    status: str  # 'processing', 'completed', 'failed', 'not_found'
+    progress: int  # 0-100
+    message: str
+    current_step: str
 
 # Initialize FastAPI Application
 app = FastAPI(
@@ -86,6 +95,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Global dictionary to track workflow progress (in production, use Redis or database)
+workflow_status = {}
 
 # Configure CORS Middleware
 cors_origins = ["*"] if settings.ALLOW_ALL_ORIGINS else settings.CORS_ORIGINS
@@ -242,14 +254,67 @@ async def upload_file(
         
         logger.info(f"File metadata stored in database: {uploaded_file.id}")
         
-        return FileUploadResponse(
+        # Trigger agent workflow for MP4 files
+        workflow_message = None
+        workflow_id = None
+        if file_extension == '.mp4':
+            try:
+                logger.info(f"Triggering agent workflow for MP4 file: {safe_filename}")
+                from web.agent.agent_workflow_builder import process_uploaded_video
+                
+                # Create the relative path for the workflow (data/<filename>)
+                relative_file_path = f"data/{safe_filename}"
+                
+                # Generate workflow ID
+                workflow_id = f"workflow_{session_id}_{uploaded_file.id}"
+                
+                # Initialize workflow status
+                workflow_status[workflow_id] = {
+                    "status": "processing",
+                    "progress": 0,
+                    "message": "Initializing workflow...",
+                    "current_step": "Starting",
+                    "file_name": file.filename
+                }
+                
+                # Trigger workflow in background (non-blocking)
+                import asyncio
+                asyncio.create_task(
+                    process_uploaded_video_with_progress(
+                        relative_file_path, 
+                        workflow_id, 
+                        session_id, 
+                        db
+                    )
+                )
+                
+                # Create automatic user message for workflow
+                workflow_message = f"Please process this video file: {relative_file_path}"
+                
+                # Store the automatic workflow message
+                await store_message(db, session_id, "user", workflow_message)
+                await store_message(
+                    db, session_id, "ai", 
+                    f"🎬 Processing video '{file.filename}'... This may take a few minutes. I'll analyze the audio and frames for you.\n\n⏳ Workflow ID: `{workflow_id}`"
+                )
+                
+                logger.info(f"Agent workflow triggered for: {relative_file_path} (ID: {workflow_id})")
+            except Exception as workflow_error:
+                logger.error(f"Failed to trigger workflow: {str(workflow_error)}")
+                # Don't fail the upload if workflow fails
+                workflow_message = f"⚠️ File uploaded but workflow failed to start: {str(workflow_error)}"
+        
+        response_data = FileUploadResponse(
             success=True,
             filename=file.filename,
             file_path=str(file_path),
             file_size=file_size,
             file_id=uploaded_file.id,
-            message=f"File '{file.filename}' uploaded successfully"
+            message=f"File '{file.filename}' uploaded successfully{' and processing started' if file_extension == '.mp4' else ''}",
+            workflow_id=workflow_id  # Will be None for MP3 files
         )
+        
+        return response_data
         
     except HTTPException:
         raise
@@ -257,6 +322,39 @@ async def upload_file(
         logger.error(f"File upload error: {str(e)}\n{traceback.format_exc()}")
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+
+@app.get("/api/workflow/{workflow_id}", response_model=WorkflowStatusResponse)
+async def get_workflow_status(workflow_id: str):
+    """
+    Get the current status and progress of a workflow
+    
+    Args:
+        workflow_id: Workflow identifier
+        
+    Returns:
+        WorkflowStatusResponse with current status and progress
+    """
+    try:
+        if workflow_id not in workflow_status:
+            return WorkflowStatusResponse(
+                success=False,
+                status="not_found",
+                progress=0,
+                message="Workflow not found",
+                current_step="Unknown"
+            )
+        
+        status_data = workflow_status[workflow_id]
+        return WorkflowStatusResponse(
+            success=True,
+            status=status_data["status"],
+            progress=status_data["progress"],
+            message=status_data["message"],
+            current_step=status_data["current_step"]
+        )
+    except Exception as e:
+        logger.error(f"Failed to get workflow status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get workflow status: {str(e)}")
 
 @app.get("/api/files/{session_id}", response_model=FileListResponse)
 async def get_uploaded_files(session_id: str, db: AsyncSession = Depends(get_database)):
@@ -420,6 +518,91 @@ async def health_check():
 
 
 # Helper Functions
+async def process_uploaded_video_with_progress(
+    file_path: str, 
+    workflow_id: str, 
+    session_id: str,
+    db: AsyncSession
+):
+    """
+    Wrapper function to process video with progress tracking
+    
+    Args:
+        file_path: Path to the uploaded video file
+        workflow_id: Unique workflow identifier
+        session_id: Session identifier for storing messages
+        db: Database session
+    """
+    try:
+        from web.agent.agent_workflow_builder import process_uploaded_video
+        
+        # Update progress: Starting
+        workflow_status[workflow_id].update({
+            "progress": 10,
+            "message": "Initializing video processing...",
+            "current_step": "Initialization"
+        })
+        
+        # Update progress: Processing
+        workflow_status[workflow_id].update({
+            "progress": 30,
+            "message": "Analyzing video content...",
+            "current_step": "Analysis"
+        })
+        
+        # Execute the actual workflow
+        result = await process_uploaded_video(file_path)
+        
+        # Update progress: Completing
+        workflow_status[workflow_id].update({
+            "progress": 90,
+            "message": "Finalizing results...",
+            "current_step": "Finalization"
+        })
+        
+        # Check if workflow succeeded
+        if result.get("success", False):
+            workflow_status[workflow_id].update({
+                "status": "completed",
+                "progress": 100,
+                "message": "Video processing completed successfully!",
+                "current_step": "Completed"
+            })
+            
+            # Store completion message
+            file_name = workflow_status[workflow_id].get("file_name", "video")
+            completion_msg = f"✅ Video processing complete for '{file_name}'! The video has been analyzed and indexed. You can now ask questions about it."
+            await store_message(db, session_id, "ai", completion_msg)
+            
+        else:
+            workflow_status[workflow_id].update({
+                "status": "failed",
+                "progress": 100,
+                "message": f"Processing failed: {result.get('error', 'Unknown error')}",
+                "current_step": "Failed"
+            })
+            
+            error_msg = f"❌ Video processing failed: {result.get('error', 'Unknown error')}"
+            await store_message(db, session_id, "ai", error_msg)
+            
+        logger.info(f"Workflow {workflow_id} completed with status: {workflow_status[workflow_id]['status']}")
+        
+    except Exception as e:
+        logger.error(f"Workflow {workflow_id} failed with error: {str(e)}\n{traceback.format_exc()}")
+        
+        workflow_status[workflow_id].update({
+            "status": "failed",
+            "progress": 100,
+            "message": f"Processing error: {str(e)}",
+            "current_step": "Error"
+        })
+        
+        try:
+            error_msg = f"❌ Video processing encountered an error: {str(e)}"
+            await store_message(db, session_id, "ai", error_msg)
+        except Exception as store_error:
+            logger.error(f"Failed to store error message: {str(store_error)}")
+
 async def get_or_create_session(db: AsyncSession, session_id: str) -> ChatSession:
     """
     Get existing session or create new one
