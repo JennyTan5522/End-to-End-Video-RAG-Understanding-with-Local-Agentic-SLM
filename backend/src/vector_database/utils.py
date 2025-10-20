@@ -2,10 +2,11 @@
 Vector Store Operations for Qdrant
 Handles point creation, upserting, and semantic search operations
 """
-from qdrant_client.models import PointStruct
+from qdrant_client.models import PointStruct, models
 from langchain_qdrant import FastEmbedSparse
 from src.vector_database.qdrant_client import get_or_create_collection
 from src.prompt_engineering.templates import rag_output_parser, RAG_QA_PROMPT
+from src.llm.inference import generate_qwen_response
 from uuid import uuid4
 import torch
 import logging
@@ -195,13 +196,12 @@ def index_chunks_to_qdrant(qdrant_client, collection_name: str, summary_chunks: 
     logger.info(f"Successfully indexed {len(qdrant_points)}/{total_chunks} chunks to Qdrant")
     return len(qdrant_points)
 
-def query_rag_points(user_query: str, dense_model_name, dense_tokenizer, dense_embedding_model, qdrant_client, collection_name: str, limit: int = 10,):
+def query_rag_points(user_query: str, dense_embedding_model, dense_tokenizer, qdrant_client, collection_name: str, limit: int = 10):
     """
     Run hybrid (dense + sparse) retrieval against Qdrant using RRF fusion.
 
     Args:
         user_query (str): The user question/query.
-        dense_model_name: Name or id for the dense embedding model.
         dense_tokenizer: Tokenizer instance for the dense model.
         dense_embedding_model: Dense embedding model instance.
         qdrant_client: Initialized QdrantClient.
@@ -213,7 +213,7 @@ def query_rag_points(user_query: str, dense_model_name, dense_tokenizer, dense_e
     """
     try:
         # Build embeddings
-        dense_vector = build_dense_embedding(dense_model_name, dense_tokenizer, dense_embedding_model, user_query)
+        dense_vector = build_dense_embedding(dense_tokenizer, dense_embedding_model, user_query)
         sparse_vector = build_sparse_embedding(user_query)
     
         # Query Qdrant with RRF fusion
@@ -234,7 +234,6 @@ def query_rag_points(user_query: str, dense_model_name, dense_tokenizer, dense_e
             query=models.FusionQuery(fusion=models.Fusion.RRF)
         )
     
-        logger.info(f"Total {len(retrieved_points)} was successfully retrieved from Qdrant Vector Store")
         logger.info(f"Retrieval Points: \n{retrieved_points}")
         return retrieved_points
     except Exception as e:
@@ -291,7 +290,7 @@ def generate_rag_response(doc_context: str, user_query: str, processor, model):
         The generated model response object.
     """
     # Build full system prompt
-    complete_prompt = RAG_QA_PROMPT.format(doc_context=doc_context) + rag_output_parser
+    complete_prompt = RAG_QA_PROMPT.format(doc_context=doc_context) + rag_output_parser.get_format_instructions()
 
     # Construct messages
     rag_messages = [
@@ -307,5 +306,5 @@ def generate_rag_response(doc_context: str, user_query: str, processor, model):
 
     # Generate and return the model response
     response = generate_qwen_response(processor, model, rag_messages)
-    parse_response = rag_answer_parser.parse(response).response_text
+    parse_response = rag_output_parser.parse(response).response_text
     return parse_response
