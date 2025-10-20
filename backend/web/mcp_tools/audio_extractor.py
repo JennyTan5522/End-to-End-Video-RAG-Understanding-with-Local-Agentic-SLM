@@ -7,7 +7,7 @@ import os
 import librosa
 import torch
 import yaml
-from transformers import AutoTokenizer
+from transformers import AutoProcessor, AutoTokenizer, Qwen2_5_VLForConditionalGeneration, AutoModelForSpeechSeq2Seq, pipeline
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from moviepy import VideoFileClip
 from config.service_config import settings
@@ -72,7 +72,6 @@ async def extract_audio_from_video(video_file: str, output_folder: str) -> str:
     finally:
         video.close()
 
-from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration, AutoModelForSpeechSeq2Seq, pipeline
 def load_transcription_pipeline(model_name: str):
     """
     Initialize automatic speech recognition model and pipeline.
