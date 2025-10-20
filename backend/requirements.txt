@@ -76,7 +76,8 @@ lazy_loader==0.4
 librosa==0.11.0
 llvmlite==0.45.1
 loguru==0.7.3
-markdown-it-py==4.0.0
+markdown-it-py==3.0.0
+markdown_pdf==1.10
 MarkupSafe==3.0.3
 marshmallow==3.26.1
 mcp==1.17.0
@@ -133,6 +134,7 @@ pydantic==2.12.2
 pydantic-settings==2.11.0
 pydantic_core==2.41.4
 Pygments==2.19.2
+PyMuPDF==1.26.5
 pyperclip==1.11.0
 python-dotenv==1.1.1
 python-multipart==0.0.20
