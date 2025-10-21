@@ -1,7 +1,7 @@
 from qdrant_client import models
 import logging
 from qdrant_client.models import models
-from src.prompt_engineering.templates import rag_output_parser, RAG_QA_PROMPT
+from src.prompt_engineering.templates import RAG_QA_PROMPT
 from src.llm.inference import generate_qwen_response
 from src.vector_database.utils import build_dense_embedding, build_sparse_embedding
 import logging
@@ -102,7 +102,7 @@ def generate_rag_response(doc_context: str, user_query: str, processor, model):
         The generated model response object.
     """
     # Build full system prompt
-    complete_prompt = RAG_QA_PROMPT.format(doc_context=doc_context) + rag_output_parser.get_format_instructions()
+    complete_prompt = RAG_QA_PROMPT.format(doc_context=doc_context)
 
     # Construct messages
     rag_messages = [
@@ -118,8 +118,8 @@ def generate_rag_response(doc_context: str, user_query: str, processor, model):
 
     # Generate and return the model response
     response = generate_qwen_response(processor, model, rag_messages)
-    parse_response = rag_output_parser.parse(response).response_text
-    return parse_response
+    logger.info(f"RAG Response: \n{response}")
+    return response
 
 def get_summary_chunks(qdrant_client, collection_name: str, match_type: str) -> str:
     """
