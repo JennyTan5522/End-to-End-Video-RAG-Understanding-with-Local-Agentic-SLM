@@ -103,7 +103,7 @@ The architecture below demonstrates an end-to-end full-stack agentic local SLM m
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/JennyTan5522/Video-RAG-Understanding-with-Local-LLMs.git
+git clone https://github.com/JennyTan5522/End-to-End-Video-RAG-Understanding-with-Local-Agentic-SLM.git
 ```
 
 ___
