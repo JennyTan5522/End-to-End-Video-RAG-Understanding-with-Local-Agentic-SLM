@@ -68,7 +68,7 @@ The backend contains the core AI logic and implementation of a `lightweight loca
 | **📝 Summary Agent** | Generates comprehensive summaries from chunked transcripts |
 | **📄 Report Agent** | Automatically generates structured PDF reports combining video analysis, transcripts, and insights |
 
-*💡 **Notes:** This setup uses small local models for experimental testing and performance benchmarking. You can easily replace these models with larger or custom variants in your configuration for improved accuracy or multimodal reasoning performance.*
+*💡 **Note:** This setup uses small local models for experimental testing and performance benchmarking. You can easily replace these models with larger or custom variants in your configuration for improved accuracy or multimodal reasoning performance.*
 
 ---
 
@@ -89,7 +89,7 @@ The backend contains the core AI logic and implementation of a `lightweight loca
 - **Storage:** 10 GB+ free space for models and dependencies
 - **Driver & Toolkit:** NVIDIA Driver ≥ 530 and CUDA ≥ 12.0 (cuDNN ≥ 8.9)
 
-***Notes:** This setup I was tested on [RunPod](https://www.runpod.io/) VM with RTX 4090*
+***Note:** This setup I was tested on [RunPod](https://www.runpod.io/) VM with RTX 4090*
 
 ---
 
@@ -219,12 +219,37 @@ env\Scripts\activate  # Windows
 source env/bin/activate  # macOS/Linux
 ```
 
-3. Start backend server
+3. Start Audio processing MCP server (Teriminal 1)
 ```bash
+cd backend
+source env/bin/activate  # Linux/Mac
+env\Scripts\activate     # Windows
+python -m web.mcp_tools.audio_extractor
+```
+
+4. Start Video processing MCP server (Teriminal 2)
+```bash
+cd backend
+source env/bin/activate  # Linux/Mac
+env\Scripts\activate     # Windows
+python -m web.mcp_tools.video_frames_extractor
+```
+
+5. Start FastAPI backend (Teriminal 3)
+```bash
+cd backend
+python -m venv env
+source env/bin/activate  # Linux/Mac
+env\Scripts\activate     # Windows
 python -m web.app
 ```
 
-**Server runs on:** `http://localhost:8000`
+**Services will be running on:**
+- FastAPI Backend: `http://localhost:8000`
+- Audio MCP Server: `http://localhost:8002`
+- Video MCP Server: `http://localhost:8003`
+
+⚠️ *Note: The FastAPI backend startup may take several minutes as the backend needs to load local models (chat model, embedding model, vision-language model) into memory.*
 
 **Quick Test**
 

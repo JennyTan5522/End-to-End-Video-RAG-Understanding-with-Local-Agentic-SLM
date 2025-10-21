@@ -1,505 +1,244 @@
-# 🤖 Video RAG Understanding Chat Application with Local Agentic SLM
+# 🤖 End-to-End Full Stack Video RAG Understanding with Local Agentic SLM
 
-A full-stack AI chat application with React frontend, FastAPI backend, PostgreSQL database, and Tauri desktop support.
+An AI-powered video analysis system using multi-agent architecture with local small language models (SLMs) for video Q&A through Retrieval-Augmented Generation (RAG) and MCP tools integration.
 
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688?logo=fastapi)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?logo=postgresql&logoColor=white)
+![Qdrant](https://img.shields.io/badge/Qdrant-DC244C?logo=qdrant&logoColor=white)
+![LangChain](https://img.shields.io/badge/🦜_LangChain-1C3C3C?logo=langchain&logoColor=white)
+![LangGraph](https://img.shields.io/badge/🕸️_LangGraph-FF6B6B?logoColor=white)
+![MCP](https://img.shields.io/badge/🔌_MCP-000000?logoColor=white)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0.5-FFC131?logo=tauri)
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [Prerequisites](#-prerequisites)
-- [Quick Start](#-quick-start)
-- [Project Structure](#-project-structure)
-- [Development](#-development)
-- [API Documentation](#-api-documentation)
-- [Troubleshooting](#-troubleshooting)
-
----
-
-## ✨ Features
-
-### Core Functionality
-- 💬 **Real-time Chat Interface** - Modern, responsive chat UI with message history
-- 🤖 **AI Response Generation** - Intelligent AI responses with fallback system
-- 💾 **Persistent Storage** - PostgreSQL database for chat history and sessions
-- 🔄 **Session Management** - Multiple chat sessions with unique identifiers
-- 🌐 **Dual Mode Support** - Run as web app or native desktop application
-- 🔌 **Connection Monitoring** - Visual API health status indicator
-
-### Technical Features
-- ⚡ **Async Architecture** - FastAPI with async/await for high performance
-- 🔐 **CORS Security** - Configured for secure cross-origin requests
-- 🎨 **Modern UI/UX** - Tailwind CSS with smooth animations
-- 🖥️ **Desktop App** - Tauri wrapper for native desktop experience
-- 📊 **Database Indexing** - Optimized PostgreSQL queries
-- 🔍 **Error Handling** - Comprehensive error handling and logging
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Demo](#demo)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [Contact](#contact)
+- [Acknowledgments](#acknowledgments)
 
 ---
 
-## 🏗️ Architecture
+## Overview
+
+This project implements an end-to-end **Video RAG (Retrieval-Augmented Generation)** full stack application system that enables users to:
+- Upload and process video files
+- Extract and transcribe audio content
+- Analyze video frames with vision-language models
+- Ask questions about video content using natural language
+- Generate comprehensive PDF reports with insights
+- Perform semantic search across video content using hybrid retrieval (BM25 + dense vectors)
+
+---
+
+## Key Features
+
+### Video Processing
+- 🎥 Multi-format video upload support
+- 🖼️ Automatic frame extraction at configurable intervals
+- 🔊 Audio extraction and transcription using Whisper
+- 👁️ Frame analysis with vision-language models
+
+### AI Capabilities
+- 🤖 Multi-agent architecture with intelligent routing
+- 🔍 Hybrid search (BM25 + dense vector search)
+- 💬 Context-aware Q&A using RAG
+- 📝 Automatic video summarization
+- 📄 PDF report generation
+
+### Tech Stack
+- ⚛️ Frontend: React + Vite + Tauri (optional desktop app)
+- ⚡ Backend: FastAPI + LangChain + LangGraph
+- 🗄️ Database: PostgreSQL + Qdrant Vector Database
+- 🤗 AI Models: Local Hugging Face models (SLMs)
+- 🔌 Tools: MCP integration for extensible capabilities
+
+---
+
+## Architecture
+
+The architecture below demonstrates an end-to-end full-stack agentic local SLM multi-agent application for analyzing and querying video content, from frontend to backend with their respective specialized agents.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     User Interface                          │
-│  ┌─────────────────────┐      ┌─────────────────────┐     │
-│  │   Web Browser       │      │  Desktop App        │     │
-│  │   (localhost:5173)  │      │  (Tauri)            │     │
-│  └──────────┬──────────┘      └──────────┬──────────┘     │
-└─────────────┼─────────────────────────────┼────────────────┘
-              │                             │
-              │ HTTP/Fetch                  │ IPC/HTTP
-              │                             │
-┌─────────────┴─────────────────────────────┴────────────────┐
-│              React Frontend (Vite)                          │
-│  • Components: ChatBox, Message, Sidebar                    │
-│  • Services: API abstraction layer                          │
-│  • Context: Global state management                         │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                              │ REST API
-                              │ (JSON)
-┌─────────────────────────────┴───────────────────────────────┐
-│              FastAPI Backend                                 │
-│  • Endpoints: /api/chat, /api/health                        │
-│  • AI Logic: Fallback response system                       │
-│  • Database: SQLAlchemy ORM with async support              │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                              │ SQL Queries
-                              │ (async)
-┌─────────────────────────────┴───────────────────────────────┐
-│              PostgreSQL Database                             │
-│  • Tables: chat_sessions, chat_messages                     │
-│  • Indexes: Optimized for performance                       │
-│  • Constraints: Foreign keys with CASCADE delete            │
-└──────────────────────────────────────────────────────────────┘
+![System Architecture](frontend/src/assets/images/architecture.png "End-to-End Video RAG Architecture")
+```
+
+### Application Interface
+
+```
+![System Architecture](frontend/src/assets/images/ui_sample1.jpg "Application Chat Interface")
+```
+
+```
+![System Architecture](frontend/src/assets/images/ui_sample2.jpg "Application Chat Interface")
 ```
 
 ---
 
-## 🔧 Prerequisites
+## Prerequisites
 
-### Required Software
+### Software Requirements
 
-| Software | Version | Purpose | Download |
-|----------|---------|---------|----------|
-| **Python** | 3.10+ | Backend runtime | [python.org](https://www.python.org/downloads/) |
-| **Node.js** | 18+ | Frontend build tool | [nodejs.org](https://nodejs.org/) |
-| **PostgreSQL** | 15+ | Database | [postgresql.org](https://www.postgresql.org/download/) |
-| **Rust** | 1.70+ | Tauri desktop (optional) | [rustup.rs](https://rustup.rs/) |
+| Software | Version | Purpose |
+|----------|---------|---------|
+| Python | 3.11 | Backend runtime |
+| Node.js | 18+ | Frontend development |
+| PostgreSQL | 15+ | Database |
+| Qdrant | Latest | Vector database |
 
-### Optional Tools
-- **pgAdmin** - PostgreSQL GUI management
-- **Postman** - API testing
-- **VS Code** - Recommended IDE
+### Hardware Requirements (for local models)
+
+- **GPU:** NVIDIA GPU with CUDA support (Compute Capability ≥ 7.0)
+- **VRAM:** 8 GB minimum, 16 GB+ recommended
+- **RAM:** 8 GB minimum, 16 GB recommended
+- **Storage:** 10 GB+ free space for models
+- **Driver:** NVIDIA Driver ≥ 530 and CUDA ≥ 12.0
+
+**Note: I tested this setup on [RunPod](https://www.runpod.io/) VM with RTX 4090*
 
 ---
 
-## 🚀 Quick Start
+## Getting Started
 
-### 1️⃣ Clone Repository
+### 1. Clone Repository
 
 ```bash
-git clone <repository-url>
-cd genai_video
+git clone https://github.com/JennyTan5522/Video-RAG-Understanding-with-Local-LLMs.git
 ```
 
-### 2️⃣ Setup PostgreSQL
+___
 
+### 2. Backend Setup
+
+Refer to the 📄 [backend README](backend/README.md) for detailed installation instructions:
+- Install Python dependencies
+- Set up PostgreSQL database
+- Configure Qdrant vector database
+- Download required AI models
+
+**Step 1: Start Audio processing MCP server (Teriminal 1)**
 ```bash
-# Install PostgreSQL from official website
-# Create database and user
-
-# Open pgAdmin or psql
-psql -U postgres
-
-# Create database
-CREATE DATABASE chatdb;
-
-# Verify connection (default credentials in backend/database.py):
-# postgresql+asyncpg://postgres:password@localhost:5432/chatdb
-```
-
-### 3️⃣ Setup Backend
-
-```bash
-# Navigate to backend
 cd backend
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Start backend server
-python app.py
+source env/bin/activate  # or env\Scripts\activate (Windows)
+python -m web.mcp_tools.audio_extractor
 ```
 
-**Backend should start on:** `http://localhost:8000`
+**Step 2: Start Video processing MCP server (Teriminal 2)**
+```bash
+cd backend
+source env/bin/activate  # or env\Scripts\activate (Windows)
+python -m web.mcp_tools.video_frames_extractor
+```
 
-### 4️⃣ Setup Frontend
+**Step 3: Start FastAPI backend (Teriminal 3)**
+```bash
+cd backend
+python -m venv env
+source env/bin/activate  # or env\Scripts\activate (Windows)
+python -m web.app
+```
+
+**Services will be running on:**
+- FastAPI Backend: `http://localhost:8000`
+- Audio MCP Server: `http://localhost:8002`
+- Video MCP Server: `http://localhost:8003`
+- 
+⚠️ *Note: The FastAPI backend startup may take several minutes as the backend needs to load local models (chat model, embedding model, vision-language model) into memory.*
+
+___
+
+### 3. Frontend Setup
+
+Refer to the 📄 [frontend README](frontend/README.md) for detailed installation instructions:
+- Install npm dependencies
+- Configure environment variables
+- Start development server
 
 ```bash
-# Open new terminal
-# Navigate to frontend
 cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
 npm run dev
 ```
 
-**Frontend should start on:** `http://localhost:5173`
+Frontend runs on: `http://localhost:5173`
 
-### 5️⃣ Test the Application
+### 4. (Optional) Desktop Application
 
-1. Open browser: `http://localhost:5173`
-2. Check connection status: Should show "🟢 Connected"
-3. Send a message: "Hello AI!"
-4. Verify response appears
-5. Refresh page - messages should persist
+```bash
+npm run dev # or npm run dev -- --host 0.0.0.0 --port 5173 --strictPort to access from any device on your network at http://<your-ip>:5173
+```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 genai_video/
-├── backend/                      # FastAPI backend
-│   ├── app.py                   # Main application entry point
-│   ├── database.py              # SQLAlchemy models and DB config
-│   ├── requirements.txt         # Python dependencies
-│   └── README.md                # Backend documentation
+├── backend/                      # FastAPI backend - AI logic, multi-agent system, and API
+│   └── README.md                 # Backend documentation
 │
-├── frontend/                     # React frontend
-│   ├── src/
-│   │   ├── components/          # React components
-│   │   │   ├── ChatBox.jsx     # Main chat interface
-│   │   │   ├── Message.jsx     # Message display component
-│   │   │   └── Sidebar.jsx     # Navigation sidebar
-│   │   ├── services/           # API service layer
-│   │   │   └── api.js          # Backend communication
-│   │   ├── context/            # React Context
-│   │   │   └── AppContext.jsx  # Global state
-│   │   ├── assets/             # Static files
-│   │   ├── App.jsx             # Root component
-│   │   └── main.jsx            # Entry point
-│   ├── src-tauri/              # Tauri desktop wrapper
-│   │   ├── src/
-│   │   │   ├── main.rs         # Rust entry point
-│   │   │   └── lib.rs          # Tauri commands
-│   │   ├── Cargo.toml          # Rust dependencies
-│   │   └── tauri.conf.json     # Tauri configuration
-│   ├── package.json            # Node.js dependencies
-│   ├── vite.config.js          # Vite configuration
-│   └── README.md               # Frontend documentation
+├── frontend/                     # React frontend - UI for chat, video upload, and processing
+│   └── README.md                 # Frontend documentation
 │
-└── README.md                    # This file
+├── sample_videos/                # Sample mp4 video for experiment
+│
+└── README.md                    
 ```
+
+**For detailed structure of each component:**
+- 🐍 Backend: [`backend/README.md`](backend/README.md)
+- ⚛️ Frontend: [`frontend/README.md`](frontend/README.md)
 
 ---
 
-## 💻 Development
+## Contributing
 
-### Backend Development
+Contributions are welcome! If you find any issues or have suggestions for improvements:
 
-```bash
-cd backend
+1. **Fork** the repository
+2. **Create** a new branch (`git checkout -b feature/improvement`)
+3. **Commit** your changes (`git commit -m 'Add new feature'`)
+4. **Push** to the branch (`git push origin feature/improvement`)
+5. **Open** a Pull Request
 
-# Activate environment
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # macOS/Linux
+**Found a bug?** Please create an issue with:
+- Description of the problem
+- Steps to reproduce
+- Expected vs actual behavior
+- Screenshots (if applicable)
 
-# Run with auto-reload
-python app.py
-
-# Access API docs
-http://localhost:8000/docs       # Swagger UI
-http://localhost:8000/redoc      # ReDoc
-```
-
-**Notes for Postgre Database Connection**
-```bash
-# Test database connection:
-python -c "from database import test_connection; import asyncio; asyncio.run(test_connection())"
-
-# View logs
-# Check terminal output for INFO/ERROR logs
-
-# Reset database
-# Drop and recreate tables (in psql)
-DROP TABLE chat_messages CASCADE;
-DROP TABLE chat_sessions CASCADE;
-# Restart app.py to recreate tables
-```
-
-### Frontend Development
-
-```bash
-cd frontend
-
-# Development mode (with hot reload)
-npm run dev
-```
-
-**Notes for Frontend Tasks:**
-```bash
-# Clear npm cache
-rm -rf node_modules package-lock.json
-npm install
-
-# Update dependencies
-npm update
-
-# Check for outdated packages
-npm outdated
-```
-
-### Tauri Desktop Development
-
-```bash
-cd frontend
-
-# Install Tauri CLI (first time only)
-cargo install tauri-cli
-
-# Run desktop app in dev mode
-npm run tauri:dev
-
-# Build desktop installer
-npm run tauri:build
-
-# Find installer at:
-# frontend/src-tauri/target/release/bundle/msi/  (Windows)
-```
-
-### Backend Deployment
-```bash
-# Install system dependencies
-sudo apt update
-sudo apt install python3 python3-pip postgresql
-
-# Setup application
-cd backend
-pip install -r requirements.txt
-```
+Thank you for helping improve this project! 🙏
 
 ---
 
-## 📚 API Documentation
+## Contact
 
-### Base URL
-- **Development:** `http://localhost:8000/api`
-- **Production:** Update in `frontend/src/services/api.js`
+- 💻 GitHub: [@JennyTan5522](https://github.com/JennyTan5522)
+- 📧 Email: jennytan5522@gmail.com
 
-### Endpoints
-
-#### 1. Health Check
-```http
-GET /api/health
-```
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-10-15T14:30:45.123456"
-}
-```
-
-#### 2. Send Chat Message
-```http
-POST /api/chat
-Content-Type: application/json
-
-{
-  "message": "Hello AI!",
-  "session_id": "default"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "user_message": {
-    "id": 1,
-    "type": "user",
-    "message": "Hello AI!",
-    "timestamp": "2025-10-15T14:30:45.123456"
-  },
-  "ai_response": {
-    "id": 2,
-    "type": "ai",
-    "message": "Hello! How can I help you today?",
-    "timestamp": "2025-10-15T14:30:45.456789"
-  },
-  "session_id": "default"
-}
-```
-
-#### 3. Get Chat History
-```http
-GET /api/chat/{session_id}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "messages": [
-    {
-      "id": 1,
-      "type": "user",
-      "message": "Hello AI!",
-      "timestamp": "2025-10-15T14:30:45.123456"
-    },
-    {
-      "id": 2,
-      "type": "ai",
-      "message": "Hello! How can I help you today?",
-      "timestamp": "2025-10-15T14:30:45.456789"
-    }
-  ],
-  "session_id": "default"
-}
-```
-
-#### 4. Clear Session
-```http
-DELETE /api/chat/{session_id}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Session default cleared"
-}
-```
-
-#### 5. List Sessions
-```http
-GET /api/sessions
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "sessions": [
-    {
-      "id": "default",
-      "created_at": "2025-10-15T14:00:00.000000",
-      "message_count": 10
-    }
-  ]
-}
-```
+Feel free to reach out for questions, suggestions, or collaboration opportunities!
 
 ---
 
-## 🔍 Troubleshooting
+## Acknowledgments
 
-### Backend Issues
+- **Hugging Face** - Open-source models
+- **LangChain & LangGraph** - Agent framework
+- **FastAPI** - Backend framework
+- **React** - Frontend library
+- **Qdrant** - Vector database
+- **Tauri** - Desktop framework
 
-**Issue: "Connection refused" to PostgreSQL**
-```bash
-# Check PostgreSQL is running
-# Windows: Services → postgresql-x64-15
-# Linux: sudo systemctl status postgresql
-
-# Verify connection details in backend/database.py
-DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/chatdb"
-```
-
-**Issue: "Port 8000 already in use"**
-```bash
-# Windows: Find and kill process
-netstat -ano | findstr :8000
-taskkill /PID <PID> /F
-
-# Linux/macOS
-lsof -ti:8000 | xargs kill -9
-```
-
-### Frontend Issues
-
-**Issue: "npm ERR! code ECONNREFUSED"**
-```bash
-# Check backend is running on port 8000
-curl http://localhost:8000/api/health
-
-# Check CORS settings in backend/app.py
-```
-
-**Issue: Blank page after npm run dev**
-```bash
-# Clear cache and rebuild
-rm -rf node_modules dist .vite
-npm install
-npm run dev
-```
-
-**Issue: "Failed to fetch" in browser console**
-```bash
-# Check API URL in frontend/src/services/api.js
-const API_BASE_URL = 'http://localhost:8000/api'
-
-# Verify backend CORS allows frontend origin
-```
-
-### Tauri Issues
-
-**Issue: "Rust not installed"**
-```bash
-# Install Rust from https://rustup.rs/
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Verify installation
-rustc --version
-cargo --version
-```
-
-**Issue: "Failed to compile"**
-```bash
-# Clean and rebuild
-cd frontend/src-tauri
-cargo clean
-cd ..
-npm run tauri:dev
-```
+*Notes: This project is for educational and research purposes.*
 
 ---
 
-## 🙏 Acknowledgments
-
-- **FastAPI** - Modern Python web framework
-- **React** - UI library
-- **Tauri** - Desktop app framework
-- **PostgreSQL** - Database system
-- **Tailwind CSS** - Styling framework
-
----
-
-## 📞 Support
-
-For questions or issues:
-- Create an issue in the repository 
-
----
-
-**Built with ❤️ for Hands-on Learning Video RAG Project**
+⚡ **Built with Vite + React + Tauri**  
+🚀 **Backend powered by FastAPI + PostgreSQL + Qdrant + Local SLM Multi-agent + MCP**

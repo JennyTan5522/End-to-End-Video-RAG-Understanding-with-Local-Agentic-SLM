@@ -145,7 +145,7 @@ frontend/
 ```
 ---
 
-*💡 **Notes:** This guide covers development setup only. Production builds are not included.*
+*💡 **Note:** This guide covers development setup only. Production builds are not included.*
 
 ---
 
