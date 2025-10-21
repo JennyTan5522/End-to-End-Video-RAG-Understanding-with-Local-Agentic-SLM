@@ -1,6 +1,6 @@
 # Backend - FastAPI Server
 
-High-performance Python backend using FastAPI with PostgreSQL database for AI chat application.
+🖥️ High-performance Python backend using `FastAPI` with `PostgreSQL` database for AI chat application.
 
 ## Table of Contents
 
@@ -8,7 +8,7 @@ High-performance Python backend using FastAPI with PostgreSQL database for AI ch
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
-- [Running](#running)
+- [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
 
 ---
@@ -28,47 +28,41 @@ High-performance Python backend using FastAPI with PostgreSQL database for AI ch
 ### Key Features:
 - The backend contains the core AI logic and implementation of a lightweight local language model capable of analyzing and querying short video files (🎥 Video RAG).
 
-### Architecture & Components
+#### Architecture & Components
 
-| Component | Description |
-|-----------|-------------|
-| 🤖 **AI & Model Stack** | Built using Hugging Face 🤗 open-source local models for chat, embedding, and summarization |
-| 🔗 **LangChain + LangGraph** | Core architecture orchestrated using LangChain and LangGraph with a multi-agent ReAct workflow for coordination and tool routing |
-| ⚙️ **MCP Integration** | Integrated with MCP (Model Context Protocol) for extensible multi-tool capability and seamless communication between agents |
-| ⚡ **FastAPI** | Provides REST endpoints for backend communication |
-| 🗄️ **PostgreSQL** | Stores persistent chat history |
-| 🗃️ **Qdrant Vector Database** | High-performance vector database for semantic search and retrieval-augmented generation (RAG) |
+    | Component | Description |
+    |-----------|-------------|
+    | 🤖 **AI & Model Stack** | Built using Hugging Face 🤗 open-source local models for chat, embedding, and summarization |
+    | 🔗 **LangChain + LangGraph** | Core architecture orchestrated using LangChain and LangGraph with a multi-agent ReAct workflow for coordination and tool routing |
+    | ⚙️ **MCP Integration** | Integrated with MCP (Model Context Protocol) for extensible multi-tool capability and seamless communication between agents |
+    | ⚡ **FastAPI** | Provides REST endpoints for backend communication |
+    | 🗄️ **PostgreSQL** | Stores persistent chat history |
+    | 🗃️ **Qdrant Vector Database** | High-performance vector database for semantic search and retrieval-augmented generation (RAG) |
 
-### Model Configuration
+#### Model Configuration
 
-| Task | Model | Description |
-|------|-------|-------------|
-| **Transcript Audio Model** | `distil-whisper/distil-small.en` | Efficient local ASR model for transcribing audio from videos |
-| **Frame & Transcript Summarization / RAG** | `yangjie-cv/WeThink-Qwen2.5VL-7B` | Vision-Language model used for multimodal understanding and RAG generation |
-| **Embedding Model** | `BAAI/bge-small-en-v1.5` | Compact text embedding model for vector retrieval |
-| **Supervisor Routing Model** | `Qwen/Qwen2.5-Coder-7B-Instruct` | Handles agent routing, reasoning, and code-based task generation |
+    | Task | Model | Description |
+    |------|-------|-------------|
+    | **Transcript Audio Model** | `distil-whisper/distil-small.en` | Efficient local ASR model for transcribing audio from videos |
+    | **Frame & Transcript Summarization / RAG** | `yangjie-cv/WeThink-Qwen2.5VL-7B` | Vision-Language model used for multimodal reasoning, understanding and RAG generation |
+    | **Embedding Model** | `BAAI/bge-small-en-v1.5` | Compact text embedding model for vector retrieval |
+    | **Supervisor Routing Model** | `Qwen/Qwen2.5-Coder-7B-Instruct` | Handles agent routing, reasoning, and code-based task generation |
 
-### Multi-Agent Configuration
+#### Multi-Agent Configuration
 
-- **Local SLM Multi-Agent AI System with Supervisor Routing:**
-The backend implements a multi-agent architecture using LangGraph and local LLMs, where a supervisor agent intelligently routes requests to specialized agents:
-  1. **💬 General Agent** - Handles general questions and conversational queries
+    - **Local SLM Multi-Agent AI System with Supervisor Routing:**
+    The backend implements a multi-agent architecture using LangGraph and local LLMs, where a supervisor agent intelligently routes requests to specialized agents:
+      1. `**💬 General Agent**` - Handles general questions and conversational queries
+      2. `**🎬 Video Frame Processing Agent**` - Processes video files, extracts frames at specified intervals, and generates frame-level summaries (MCP tools integration)
+      3. `**🔊 Audio Processing Agent**` - Extracts audio from videos, performs transcription chunking, and generates transcript summaries (MCP tools integration)
+      4. `**🔍 RAG Agent**` - Retrieval-Augmented Generation for video and speech Q&A:
+        - Implements hybrid search combining BM25 (keyword-based) and dense vector search
+        - Integrates with Qdrant vector database for efficient semantic retrieval
+        - Provides context-aware answers based on video content
+      5. `**📝 Summary Agent**` - Generates comprehensive summaries from chunked transcripts
+      6. `**📄 Report Agent**` - Automatically generates structured PDF reports combining video analysis, transcripts, and insights
 
-  2. **🎬 Video Frame Processing Agent** - Processes video files, extracts frames at specified intervals, and generates frame-level summaries (MCP tools integration)
-
-  3. **🔊 Audio Processing Agent** - Extracts audio from videos, performs transcription chunking, and generates transcript summaries (MCP tools integration)
-
-  4. **🔍 RAG Agent** - Retrieval-Augmented Generation for video and speech Q&A:
-    - Implements hybrid search combining BM25 (keyword-based) and dense vector search
-    - Integrates with Qdrant vector database for efficient semantic retrieval
-    - Provides context-aware answers based on video content
-
-  5. **📝 Summary Agent** - Generates comprehensive summaries from chunked transcripts
-
-  6. **📄 Report Agent** - Automatically generates structured PDF reports combining video analysis, transcripts, and insights
-
-
-💡 This setup uses small local models for experimental testing and performance benchmarking. You can easily replace these models with larger or custom variants in your configuration for improved accuracy or multimodal reasoning performance
+*💡 This setup uses small local models for experimental testing and performance benchmarking. You can easily replace these models with larger or custom variants in your configuration for improved accuracy or multimodal reasoning performance.*
 
 ---
 
@@ -207,18 +201,20 @@ brew install qdrant
 
 ---
 
-## Running
-
-### Development Mode
-
+## Getting Started
+### 1. Navigate to Backend Directory
 ```bash
 cd backend
+```
 
-# Activate virtual environment
+### 2. Activate virtual environment
+```bash
 env\Scripts\activate  # Windows
 source env/bin/activate  # macOS/Linux
+```
 
-# Start backend server
+### 3. Start backend server
+```bash
 python -m web.app
 ```
 
