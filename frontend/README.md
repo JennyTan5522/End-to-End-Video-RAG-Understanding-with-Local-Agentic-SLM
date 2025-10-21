@@ -1,6 +1,6 @@
 # Frontend - React Application
 
-React-based frontend for AI Video Assistant with real-time chat, video upload, and processing capabilities.
+💬 React-based frontend for AI Video Assistant with real-time chat, video upload, and processing capabilities.
 
 ---
 
@@ -50,25 +50,25 @@ React-based frontend for AI Video Assistant with real-time chat, video upload, a
 cd frontend
 ```
 
-### 2. Install the Required NPM Packages
+### 2. Install Dependencies
 
-- Run the following command inside the `frontent` directory:
+- Run the following command inside the `frontend` directory to install the required NPM packages:
     ```bash
     npm install
     ```
 
-- Optional (for Tauri setup):
+- If you need `Tauri setup` for your desktop application, you can install it (optional):
     ```bash
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     ```
 
 - **Verify Installation:**
-```bash
-node --version    # v18.0.0 or higher
-npm --version     # 9.0.0 or higher
-rustc --version   # 1.70.0 or higher (for Tauri only)
-cargo --version   # (for Tauri only)
-```
+    ```bash
+    node --version    # v18.0.0 or higher
+    npm --version     # 9.0.0 or higher
+    rustc --version   # 1.70.0 or higher (for Tauri only)
+    cargo --version   # (for Tauri only)
+    ```
 
 ### 3. Configure Environment Variables
 
@@ -104,45 +104,6 @@ cargo --version   # (for Tauri only)
     # Run desktop app
     npm run tauri dev
     ```
-
----
-
-## Tauri Desktop Application
-
-### Setup
-
-**1. Install Rust**
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-**2. Verify Installation**
-```bash
-rustc --version
-cargo --version
-```
-
-### Development
-
-**Run in Development Mode:**
-```bash
-npm run tauri dev
-```
-Launches desktop app with hot-reload for testing.
-
-### Production
-
-**Build Desktop App:**
-```bash
-npm run tauri build
-```
-Creates installable application for distribution.
-
-**Generate App Icons:**
-```bash
-npm run tauri icon
-```
-
 ---
 
 ## Project Structure
@@ -186,7 +147,7 @@ frontend/
 ```
 ---
 
-**Note:** This guide covers development setup only. Production builds are not included.
+💡 **Note:** This guide covers development setup only. Production builds are not included.
 
 ---
 
