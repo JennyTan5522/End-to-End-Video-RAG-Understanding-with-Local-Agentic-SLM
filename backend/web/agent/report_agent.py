@@ -100,10 +100,10 @@ class ReportAgent:
             if pdf_path:
                 logger.info(f"PDF report generated successfully: {pdf_path}")
                 success_message = (
-                    f"✅ **Report Generated Successfully!**\n\n"
-                    f"📄 **File:** `{pdf_path.name}`\n"
-                    f"📂 **Location:** `{pdf_path.parent}`\n"
-                    f"📊 **Video:** {self.collection_name}\n\n"
+                    f"✅ Report Generated Successfully!\n\n"
+                    f"📄 File: `{pdf_path.name}`\n"
+                    f"📂 Location: `{pdf_path.parent}`\n"
+                    f"📊 Video: {self.collection_name}\n\n"
                     f"You can find your PDF report at:\n`{pdf_path}`"
                 )
                 state["messages"].append(AIMessage(content=success_message))
