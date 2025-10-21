@@ -26,9 +26,7 @@ from web.database import (
 )
 
 from src.llm.model_loader import model_manager
-from src.llm.inference import generate_qwen_response
-from src.vector_database.qdrant_client import get_qdrant_client
-from src.vector_database.utils import query_rag_points, build_doc_context, generate_rag_response
+from web.agent.agent_workflow_builder import process_uploaded_video
 
 # Add backend folder to py path
 backend_dir = Path(__file__).parent.parent
@@ -113,6 +111,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # API Endpoints
@@ -361,7 +360,7 @@ async def get_workflow_status(workflow_id: str):
         logger.error(f"Failed to get workflow status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get workflow status: {str(e)}")
 
-@app.get("/api/files/{session_id}", response_model=FileListResponse)
+@app.get("/api/files/session/{session_id}", response_model=FileListResponse)
 async def get_uploaded_files(session_id: str, db: AsyncSession = Depends(get_database)):
     """
     Get list of uploaded files for a session
@@ -539,8 +538,6 @@ async def process_uploaded_video_with_progress(
         db: Database session
     """
     try:
-        from web.agent.agent_workflow_builder import process_uploaded_video
-        
         # Update progress: Starting
         workflow_status[workflow_id].update({
             "progress": 10,
@@ -555,8 +552,8 @@ async def process_uploaded_video_with_progress(
             "current_step": "Analysis"
         })
         
-        # Execute the actual workflow
-        result = await process_uploaded_video(file_path)
+        # Execute the actual workflow with session id
+        result = await process_uploaded_video(file_path, session_id=session_id)
         
         # Update progress: Completing
         workflow_status[workflow_id].update({
@@ -576,7 +573,24 @@ async def process_uploaded_video_with_progress(
             
             # Store completion message
             file_name = workflow_status[workflow_id].get("file_name", "video")
-            completion_msg = f"✅ Video processing complete for '{file_name}'! The video has been analyzed and indexed. You can now ask questions about it."
+            completion_msg = f"""✅ **Video processing complete for '{file_name}'!**
+
+            🎉 Welcome to the Video AI Chatbot! Your video has been analyzed and indexed. Here's what you can do now:
+
+            📋 **RAG - Ask Questions About Video Content:**
+            - Example: *"What are the main topics discussed in the video?"*
+            - Example: *"What happened at the beginning of the video?"*
+            - Example: *"Who was mentioned in the video?"*
+
+            📝 **Get a Summary:**
+            - Example: *"Can you give me a summary of the video content?"*
+            - Example: *"Summarize the video for me"*
+
+            📄 **Generate a PDF Report:**
+            - Example: *"Generate a PDF report for this video"*
+            - Example: *"Create a report for the summary"*
+
+            Feel free to ask me anything about your video! 🚀"""
             await store_message(db, session_id, "ai", completion_msg)
             
         else:
@@ -682,12 +696,19 @@ def message_to_model(message: ChatMessage) -> MessageModel:
 
 async def generate_ai_response(user_message: str, session_id: str = "default", db: AsyncSession = None) -> str:
     """
-    Generate AI response using local RAG model
+    Generate AI response using the agent workflow system.
+    
+    The supervisor agent analyzes the user's intent and routes to the appropriate workflow:
+    - general_question_workflow: For general questions
+    - rag_workflow: For questions about video content
+    - summary_workflow: For video summaries
+    - frame_processing_workflow: For video file processing
+    - audio_processing_workflow: For audio file processing
     
     Args:
         user_message: User's input message
         session_id: Session identifier to determine collection name
-        db: Database session to query uploaded files
+        db: Database session (not used, but kept for compatibility)
         
     Returns:
         AI-generated response text
@@ -700,128 +721,39 @@ async def generate_ai_response(user_message: str, session_id: str = "default", d
             logger.info("Models not loaded, loading now...")
             await model_manager.load_models()
         
-        # Step 2: Initialize Qdrant client
-        logger.info("Initializing Qdrant client...")
+        # Step 2: Invoke the agent workflow
+        logger.info(f"Invoking agent workflow for session '{session_id}'...")
         try:
-            qdrant_client = get_qdrant_client()
-        except Exception as e:
-            logger.error(f"Failed to initialize Qdrant: {str(e)}")
-            return "I'm having trouble accessing the knowledge base. Please try again later."
-        
-        # Step 3: Get embedding model
-        try:
-            dense_embedding_model, dense_embedding_tokenizer = model_manager.get_embedding_model()
-        except Exception as e:
-            logger.error(f"Failed to get embedding model: {str(e)}")
-            return "I'm having trouble loading the AI models. Please try again later."
-        
-        # Step 4: Find the most recent MP4 video uploaded in this session
-        collection_name = None
-        if db:
-            try:
-                # Query the most recent MP4 file for this session
-                result = await db.execute(
-                    select(UploadedFile)
-                    .where(UploadedFile.session_id == session_id)
-                    .where(UploadedFile.filename.like('%.mp4'))
-                    .order_by(UploadedFile.uploaded_at.desc())
-                )
-                latest_video = result.scalars().first()
-                
-                if latest_video:
-                    # Extract timestamp and original filename from the saved filename
-                    # Format: YYYYMMDD_HHMMSS_originalname.mp4
-                    saved_filename = Path(latest_video.file_path).stem  # Remove .mp4
-                    
-                    # Split by underscore: [YYYYMMDD, HHMMSS, originalname...]
-                    parts = saved_filename.split('_', 2)
-                    if len(parts) >= 3:
-                        timestamp = f"{parts[0]}_{parts[1]}"
-                        original_name = parts[2]
-                        
-                        # Collection name format: YYYYMMDD_HHMMSS_videoname (without extension)
-                        collection_name = f"{timestamp}_{original_name}"
-                        logger.info(f"Using collection based on uploaded video: '{collection_name}'")
-                    else:
-                        # Fallback: use the full stem
-                        collection_name = saved_filename
-                        logger.info(f"Using full filename as collection: '{collection_name}'")
-                else:
-                    logger.info("No MP4 files found for this session")
-            except Exception as e:
-                logger.warning(f"Failed to query uploaded files: {str(e)}")
-        else:
-            # Fallback: Try to find any collection in Qdrant
-            try:
-                collections = qdrant_client.get_collections()
-                if collections and len(collections.collections) > 0:
-                    collection_name = collections.collections[-1].name
-                    logger.info(f"Using most recent collection (no DB access): {collection_name}")
-            except Exception as e:
-                logger.warning(f"No collections found: {str(e)}")
-
-        # Get vision model for response generation
-        qwen_vision_processor, qwen_vision_chat_model = model_manager.get_qwen_vision_model()
-        
-        # Step 5: Query vector database if collection exists
-        if collection_name:
-            try:
-                logger.info(f"Querying vector database for: {user_message[:50]}...")
-                retrieved_points = query_rag_points(
-                    user_message,
-                    dense_embedding_model,
-                    dense_embedding_tokenizer,
-                    qdrant_client,
-                    collection_name
-                )
-                
-                if retrieved_points:
-                    logger.info("="*80)
-                    logger.info("RETRIEVAL POINTS")
-                    logger.info("="*80)
-                    logger.info(retrieved_points)
-                    
-                    # Build document context
-                    doc_context = build_doc_context(retrieved_points)
-                    logger.info("="*80)
-                    logger.info("DOCUMENT CONTEXT")
-                    logger.info("="*80)
-                    logger.info(doc_context)
-                    
-                    # Generate RAG response
-                    response = generate_rag_response(
-                        doc_context,
-                        user_message,
-                        qwen_vision_processor,
-                        qwen_vision_chat_model
-                    )
-                    
-                    if response and response.strip():
-                        logger.info("RAG response generated successfully")
-                        return response
-                    else:
-                        logger.warning("Generated response is empty")
-                        return "I'm sorry, I couldn't generate a meaningful response based on the available information."
-                else:
-                    logger.info("No relevant documents found in vector database")
-                    # Fall back to direct chat model
-            except Exception as e:
-                logger.warning(f"RAG query failed, falling back to direct response: {str(e)}")
-        
-        # Step 6: Fallback - Use chat model directly without RAG
-        logger.info("Using direct chat model (no RAG context)")
-        try:
-            response = generate_qwen_response(qwen_vision_processor, qwen_vision_chat_model, [{"role": "user", "content": user_message}])
+            from web.agent.agent_workflow_builder import build_agent_workflow
             
-            if hasattr(response, 'content'):
-                return response.content
-            elif isinstance(response, str):
-                return response
+            # Build and invoke the workflow - this returns the result dictionary
+            result = await build_agent_workflow(
+                user_request=user_message,
+                session_id=session_id
+            )
+            
+            logger.info(f"Agent workflow completed successfully")
+            
+            # Extract the response from the result
+            # The last message in the state should be the AI response
+            if result and "messages" in result:
+                last_message = result["messages"][-1]
+                if hasattr(last_message, 'content'):
+                    response_text = last_message.content
+                elif isinstance(last_message, dict) and 'content' in last_message:
+                    response_text = last_message['content']
+                else:
+                    response_text = str(last_message)
+                
+                logger.info(f"Extracted response: {response_text[:100]}...")
+                return response_text
             else:
-                return str(response)
-        except Exception as e:
-            logger.error(f"Direct chat model failed: {str(e)}")
-            return f"Error while processing your message: '{user_message[:100]}...Please check backend log details.'"
+                logger.warning("Agent workflow did not return expected result format")
+                return "I'm sorry, I couldn't process your request. Please try again."
+                
+        except Exception as workflow_error:
+            logger.error(f"Agent workflow failed: {str(workflow_error)}", exc_info=True)
+            return f"I encountered an error while processing your request: {str(workflow_error)}"
             
     except Exception as e:
         logger.error(f"Error generating AI response: {str(e)}\n{traceback.format_exc()}")
@@ -852,7 +784,7 @@ async def startup_event():
         logger.info(f"   • POST /api/chat - Send message to AI")
         logger.info(f"   • GET /api/chat/{{session_id}} - Get chat history")
         logger.info(f"   • POST /api/upload - Upload MP3/MP4 file")
-        logger.info(f"   • GET /api/files/{{session_id}} - List uploaded files")
+        logger.info(f"   • GET /api/files/session/{{session_id}} - List uploaded files")
         logger.info(f"   • DELETE /api/files/{{file_id}} - Delete file")
         logger.info(f"   • DELETE /api/chat/{{session_id}} - Clear session")
         logger.info(f"   • GET /api/sessions - List all sessions")
