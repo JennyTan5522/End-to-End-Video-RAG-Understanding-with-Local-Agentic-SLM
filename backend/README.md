@@ -31,7 +31,9 @@
 ## Key Features:
 The backend contains the core AI logic and implementation of a `lightweight local language model` capable of **analyzing and querying short video files (🎥 Video RAG)**.
 
-### Architecture & Components
+---
+
+### Backend Architecture & Components
 
 | Component | Description |
 |-----------|-------------|
@@ -42,6 +44,8 @@ The backend contains the core AI logic and implementation of a `lightweight loca
 | 🗄️ **PostgreSQL** | Stores persistent chat history |
 | 🗃️ **Qdrant Vector Database** | High-performance vector database for semantic search and retrieval-augmented generation (RAG) |
 
+---
+
 ### Model Configuration
 
 | Task | Model | Description |
@@ -51,20 +55,21 @@ The backend contains the core AI logic and implementation of a `lightweight loca
 | **Embedding Model** | `BAAI/bge-small-en-v1.5` | Compact text embedding model for vector retrieval |
 | **Supervisor Routing Model** | `Qwen/Qwen2.5-Coder-7B-Instruct` | Handles agent routing, reasoning, and code-based task generation |
 
+---
+
 ### Multi-Agent Configuration
 
 **Local SLM Multi-Agent AI System with Supervisor Routing:**
 The backend implements a multi-agent architecture using LangGraph and local LLMs, where a supervisor agent intelligently routes requests to specialized agents:
-  1. **💬 General Agent** - Handles general questions and conversational queries
-  2. **🎬 Video Frame Processing Agent** - Processes video files, extracts frames at specified intervals, and generates frame-level summaries (MCP tools integration)
-  3. **🔊 Audio Processing Agent** - Extracts audio from videos, performs transcription chunking, and generates transcript summaries (MCP tools integration)
-  4. **🔍 RAG Agent** - Retrieval-Augmented Generation for video and speech Q&A:
-    - Implements hybrid search combining BM25 (keyword-based) and dense vector search
-    - Integrates with Qdrant vector database for efficient semantic retrieval
-    - Provides context-aware answers based on video content
-  5. **📝 Summary Agent** - Generates comprehensive summaries from chunked transcripts
-  6. **📄 Report Agent** - Automatically generates structured PDF reports combining video analysis, transcripts, and insights
 
+| Agent | Description |
+|-------|-------------|
+| **💬 General Agent** | Handles general questions and conversational queries |
+| **🎬 Video Frame Processing Agent** | Processes video files, extracts frames at specified intervals, and generates frame-level summaries (MCP tools integration) |
+| **🔊 Audio Processing Agent** | Extracts audio from videos, performs transcription chunking, and generates transcript summaries (MCP tools integration) |
+| **🔍 RAG Agent** | Retrieval-Augmented Generation for video and speech Q&A:<br>• Implements hybrid search combining BM25 (keyword-based) and dense vector search<br>• Integrates with Qdrant vector database for efficient semantic retrieval<br>• Provides context-aware answers based on video content |
+| **📝 Summary Agent** | Generates comprehensive summaries from chunked transcripts |
+| **📄 Report Agent** | Automatically generates structured PDF reports combining video analysis, transcripts, and insights |
 
 *💡 **Notes:** This setup uses small local models for experimental testing and performance benchmarking. You can easily replace these models with larger or custom variants in your configuration for improved accuracy or multimodal reasoning performance.*
 
