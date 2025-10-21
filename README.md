@@ -70,10 +70,8 @@ The architecture below demonstrates an end-to-end full-stack agentic local SLM m
 
 ### Application Interface
 
-<p align="center">
-  <img src="frontend/src/assets/ui_sample1.jpg" alt="Chat Interface 1" width="45%">
-  <img src="frontend/src/assets/ui_sample2.jpg" alt="Chat Interface 2" width="45%">
-</p>
+![Chat Interface 1](./frontend/src/assets/ui_sample1.jpg)
+![Chat Interface 2](./frontend/src/assets/ui_sample2.jpg)
 
 ---
 
