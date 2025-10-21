@@ -1,10 +1,9 @@
 from langchain_core.output_parsers import PydanticOutputParser
-from src.prompt_engineering.schemas import TranscriptInfo, AgentSupervisorRouter, ExtractVideoFileSchema, RAGAnswerSchema
+from src.prompt_engineering.schemas import TranscriptInfo, AgentSupervisorRouter, ExtractVideoFileSchema
 
 transcript_summary_parser = PydanticOutputParser(pydantic_object=TranscriptInfo)
 supervisor_output_parser = PydanticOutputParser(pydantic_object=AgentSupervisorRouter)
 argument_parser = PydanticOutputParser(pydantic_object=ExtractVideoFileSchema)
-rag_output_parser = PydanticOutputParser(pydantic_object=RAGAnswerSchema)
 
 TRANSCRIPT_IMG_SUMMARIZER_PROMPT = f"""
 ## YOUR ROLE:
@@ -64,8 +63,6 @@ The given context may include different types of data:
 
 ## DOCUMENT CONTEXT:
 {doc_context}
-
-## OUTPUT FORMAT (Strictly follow this schema):
 """
 
 
