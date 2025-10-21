@@ -160,7 +160,7 @@ export async function uploadFile(file, sessionId = 'default') {
  */
 export async function getUploadedFiles(sessionId = 'default') {
   try {
-    const response = await fetch(`${API_BASE_URL}/files/${sessionId}`);
+    const response = await fetch(`${API_BASE_URL}/files/session/${sessionId}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
