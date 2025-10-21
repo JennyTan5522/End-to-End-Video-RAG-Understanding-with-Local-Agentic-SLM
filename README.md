@@ -19,23 +19,21 @@ An AI-powered video analysis system using multi-agent architecture with local sm
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
-- [Demo](#demo)
 - [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [Contact](#contact)
-- [Acknowledgments](#acknowledgments)
 
 ---
 
 ## Overview
 
 This project implements an end-to-end **Video RAG (Retrieval-Augmented Generation)** full stack application system that enables users to:
-- Upload and process video files
-- Extract and transcribe audio content
-- Analyze video frames with vision-language models
-- Ask questions about video content using natural language
-- Generate comprehensive PDF reports with insights
-- Perform semantic search across video content using hybrid retrieval (BM25 + dense vectors)
+- 🎞️ Upload and process video files
+- 🎧 Extract and transcribe audio content
+- 🖼️ Analyze video frames with vision-language models
+- 💬 Ask questions about video content using natural language
+- 📄 Generate comprehensive PDF reports with insights
+- 🔍 Perform semantic search across video content using hybrid retrieval (BM25 + dense vectors)
 
 ---
 
@@ -67,19 +65,15 @@ This project implements an end-to-end **Video RAG (Retrieval-Augmented Generatio
 
 The architecture below demonstrates an end-to-end full-stack agentic local SLM multi-agent application for analyzing and querying video content, from frontend to backend with their respective specialized agents.
 
-```
-![System Architecture](frontend/src/assets/images/architecture.png "End-to-End Video RAG Architecture")
-```
+![System Architecture](./frontend/src/assets/images/architecture.png "End-to-End Video RAG Architecture")
+
 
 ### Application Interface
 
-```
-![System Architecture](frontend/src/assets/images/ui_sample1.jpg "Application Chat Interface")
-```
-
-```
-![System Architecture](frontend/src/assets/images/ui_sample2.jpg "Application Chat Interface")
-```
+<p align="center">
+  <img src="./frontend/src/assets/images/ui_sample1.jpg" alt="Chat Interface 1" width="45%">
+  <img src="./frontend/src/assets/images/ui_sample2.jpg" alt="Chat Interface 2" width="45%">
+</p>
 
 ---
 
@@ -180,7 +174,7 @@ npm run dev # or npm run dev -- --host 0.0.0.0 --port 5173 --strictPort to acces
 ## Project Structure
 
 ```
-genai_video/
+your_project_root_folder/
 ├── backend/                      # FastAPI backend - AI logic, multi-agent system, and API
 │   └── README.md                 # Backend documentation
 │
@@ -200,21 +194,7 @@ genai_video/
 
 ## Contributing
 
-Contributions are welcome! If you find any issues or have suggestions for improvements:
-
-1. **Fork** the repository
-2. **Create** a new branch (`git checkout -b feature/improvement`)
-3. **Commit** your changes (`git commit -m 'Add new feature'`)
-4. **Push** to the branch (`git push origin feature/improvement`)
-5. **Open** a Pull Request
-
-**Found a bug?** Please create an issue with:
-- Description of the problem
-- Steps to reproduce
-- Expected vs actual behavior
-- Screenshots (if applicable)
-
-Thank you for helping improve this project! 🙏
+Contributions are welcome! 
 
 ---
 
@@ -226,15 +206,6 @@ Thank you for helping improve this project! 🙏
 Feel free to reach out for questions, suggestions, or collaboration opportunities!
 
 ---
-
-## Acknowledgments
-
-- **Hugging Face** - Open-source models
-- **LangChain & LangGraph** - Agent framework
-- **FastAPI** - Backend framework
-- **React** - Frontend library
-- **Qdrant** - Vector database
-- **Tauri** - Desktop framework
 
 *Notes: This project is for educational and research purposes.*
 
