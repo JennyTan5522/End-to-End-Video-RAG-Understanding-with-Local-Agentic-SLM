@@ -7,6 +7,7 @@ import os
 import logging
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration, AutoModelForSpeechSeq2Seq, pipeline, AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from langchain_huggingface import ChatHuggingFace, HuggingFacePipeline
+from config.service_config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,7 @@ def build_hf_chat_model(*, deterministic: bool, use_4bit: bool = True) -> ChatHu
         - deterministic=False -> workers (sampled)
         - use_4bit=True       -> load quantized version with bitsandbytes
     """
-    MODEL_ID = "Qwen/Qwen2.5-Coder-7B-Instruct"
+    MODEL_ID = settings.QWEN_CODER_MODEL_NAME
     logger.info(f"Building chat model: {MODEL_ID} (deterministic={deterministic}, use_4bit={use_4bit})")
 
     try:
@@ -215,7 +216,7 @@ def build_hf_chat_model(*, deterministic: bool, use_4bit: bool = True) -> ChatHu
 
         # --- Generation settings
         gen_kwargs = {
-            "max_new_tokens": 256 if deterministic else 2048,
+            "max_new_tokens": 2048 if deterministic else 10000,
             "pad_token_id": tokenizer.pad_token_id,
             "eos_token_id": model.generation_config.eos_token_id,
             "return_full_text": False,
