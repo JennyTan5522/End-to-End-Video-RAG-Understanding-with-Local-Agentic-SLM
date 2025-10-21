@@ -9,6 +9,7 @@
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
+- [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
 
 ---
@@ -82,8 +83,10 @@ cd frontend
     ```bash
     cp .env_example .env
     ```
+    
+---
 
-### 4. Start Development Server
+## Getting Started
 
 - You can start your application in either `Web Browser` or `Desktop App (Tauri)` mode:
 
