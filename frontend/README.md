@@ -78,11 +78,6 @@ cd frontend
     ```env
     VITE_API_BASE_URL=http://localhost:8000
     ```
-
-- Or copy from the example env file:
-    ```bash
-    cp .env_example .env
-    ```
     
 ---
 
@@ -150,7 +145,7 @@ frontend/
 ```
 ---
 
-💡 **Note:** This guide covers development setup only. Production builds are not included.
+*💡 **Notes:** This guide covers development setup only. Production builds are not included.*
 
 ---
 
