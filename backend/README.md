@@ -1,6 +1,6 @@
 # Backend - FastAPI Server
 
-🖥️ Python backend using `FastAPI` with `PostgreSQL` database for Video RAG AI chat application.
+The backend contains the core AI logic and implementation of a `lightweight local language model (SLM)` capable of **analyzing and querying short video files (🎥 Video RAG)**.
 
 ## Table of Contents
 
@@ -29,9 +29,6 @@
 ---
 
 ## Key Features:
-The backend contains the core AI logic and implementation of a `lightweight local language model` capable of **analyzing and querying short video files (🎥 Video RAG)**.
-
----
 
 ### Backend Architecture & Components
 
@@ -60,7 +57,7 @@ The backend contains the core AI logic and implementation of a `lightweight loca
 ### Multi-Agent Configuration
 
 **Local SLM Multi-Agent AI System with Supervisor Routing:**
-The backend implements a multi-agent architecture using LangGraph and local LLMs, where a supervisor agent intelligently routes requests to specialized agents:
+- The backend implements a multi-agent architecture using `LangGraph` and `local LLMs`, where a supervisor agent intelligently routes requests to specialized agents:
 
 | Agent | Description |
 |-------|-------------|
