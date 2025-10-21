@@ -65,14 +65,14 @@ This project implements an end-to-end **Video RAG (Retrieval-Augmented Generatio
 
 The architecture below demonstrates an end-to-end full-stack agentic local SLM multi-agent application for analyzing and querying video content, from frontend to backend with their respective specialized agents.
 
-![System Architecture](frontend/src/assets/images/architecture.png "End-to-End Video RAG Architecture")
+![System Architecture](frontend/src/assets/architecture.png "End-to-End Video RAG Architecture")
 
 
 ### Application Interface
 
 <p align="center">
-  <img src="frontend/src/assets/images/ui_sample1.jpg" alt="Chat Interface 1" width="45%">
-  <img src="frontend/src/assets/images/ui_sample2.jpg" alt="Chat Interface 2" width="45%">
+  <img src="frontend/src/assets/ui_sample1.jpg" alt="Chat Interface 1" width="45%">
+  <img src="frontend/src/assets/ui_sample2.jpg" alt="Chat Interface 2" width="45%">
 </p>
 
 ---
