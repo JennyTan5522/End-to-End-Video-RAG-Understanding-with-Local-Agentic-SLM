@@ -18,17 +18,15 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str = "postgresql+asyncpg://postgres:admin@localhost:5432/chatdb"
     
-    # OpenAI Configuration
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4"
-    OPENAI_TEMPERATURE: float = 0.0
-    
     # Audio Model Configuration
     AUDIO_MODEL_NAME: str = "distil-whisper/distil-small.en"
 
     # Qwen-VL Model Configuration
     QWEN_VL_MODEL_NAME: str = "yangjie-cv/WeThink-Qwen2.5VL-7B"
     QWEN_VL_USE_4BIT: bool = True
+
+    # Multi-Agent Supervisor Model
+    QWEN_CODER_MODEL_NAME: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
 
     # bge Embedding Model Configuration
     BGE_EMBEDDING_MODEL_NAME: str = "BAAI/bge-small-en-v1.5"
