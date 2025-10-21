@@ -192,7 +192,21 @@ your_project_root_folder/
 
 ## Contributing
 
-Contributions are welcome! 
+Contributions are welcome! If you find any issues or have suggestions for improvements:
+
+1. **Fork** the repository
+2. **Create** a new branch (`git checkout -b feature/improvement`)
+3. **Commit** your changes (`git commit -m 'Add new feature'`)
+4. **Push** to the branch (`git push origin feature/improvement`)
+5. **Open** a Pull Request
+
+**Found a bug?** Please create an issue with:
+- Description of the problem
+- Steps to reproduce
+- Expected vs actual behavior
+- Screenshots (if applicable)
+
+Thank you for helping improve this project! 🙏
 
 ---
 
@@ -202,10 +216,7 @@ Contributions are welcome!
 - 📧 Email: jennytan5522@gmail.com
 
 Feel free to reach out for questions, suggestions, or collaboration opportunities!
-
----
-
-*Notes: This project is for educational and research purposes.*
+*Note: This project is for educational and research purposes.*
 
 ---
 
