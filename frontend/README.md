@@ -45,13 +45,13 @@
 
 ## Installation
 
-### 1. Navigate to Frontend Directory
+1. Navigate to Frontend Directory
 
 ```bash
 cd frontend
 ```
 
-### 2. Install Dependencies
+2. Install Dependencies
 
 - Run the following command inside the `frontend` directory to install the required NPM packages:
     ```bash
@@ -71,7 +71,7 @@ cd frontend
     cargo --version   # (for Tauri only)
     ```
 
-### 3. Configure Environment Variables
+3. Configure Environment Variables
 
 - Create a .env file inside the `frontend/` directory:
     - VITE_API_BASE_URL defines the backend API endpoint that your frontend will communicate with.
@@ -154,4 +154,4 @@ frontend/
 
 ---
 
-**Built with Vite + React + Tauri**
+⚡ **Built with Vite + React + Tauri**
